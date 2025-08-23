@@ -1,0 +1,15 @@
+name: Check Push  # Actionsの名前
+
+on:   # いつ走るか
+  push:   # pushされたら必ず実行
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest  # Ubuntuのランナーで動作
+
+    steps:
+      - name: Check out repository   # リポジトリを取得
+        uses: actions/checkout@v4
+
+      - name: Show latest commit     # 最新コミット情報を表示
+        run: git log -1 --pretty=full
