@@ -1,0 +1,10 @@
+# これは「まず動作確認のために使う、手動の監視銘柄リスト」です。
+# Runbookの想定：本番では nightly_screen が EODから watchlist_A/B.json を作ります。
+# それまでの“つなぎ”として、場中データが豊富で落ちにくい銘柄を入れておきます。  
+
+symbols:
+  quick_test:    # 接続や指標計算のテスト用グループ
+    - AAPL
+    - TSLA
+    - AMD
+    - NVDA

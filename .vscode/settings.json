@@ -1,0 +1,8 @@
+{
+  // VSCodeが使うPythonを、プロジェクト内の .venv に固定します。
+  "python.defaultInterpreterPath": ".venv\\Scripts\\python.exe",
+
+  // Pylance（インテリセンス／静的解析）に src を“追加の探索パス”として教えます。
+  // これで rh_pdc_daytrade.* の import 未解決の波線が消えます。
+  "python.analysis.extraPaths": ["./src"]
+}

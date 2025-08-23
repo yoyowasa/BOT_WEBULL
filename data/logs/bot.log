@@ -1,0 +1,5 @@
+2025-08-24 05:02:58 | INFO | hello from logutil
+2025-08-24 06:17:06 | INFO | nightly_screen: start (logfile=E:\BOT_WEBULL\data\logs\bot.log)
+2025-08-24 06:17:06 | INFO | temporary stub written (Polygon integration TBD): data\eod\watchlist_A.json , data\eod\watchlist_B.json
+2025-08-24 06:37:40 | INFO | nightly_screen: start (logfile=E:\BOT_WEBULL\data\logs\bot.log)
+2025-08-24 06:37:40 | INFO | temporary ranked watchlists written (Polygon integration TBD): data\eod\watchlist_A.json , data\eod\watchlist_B.json

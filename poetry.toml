@@ -1,0 +1,3 @@
+[virtualenvs]
+create = true  # プロジェクト用の仮想環境（venv）を必ず作る設定
+in-project = true  # ルート直下に .venv フォルダを作る設定

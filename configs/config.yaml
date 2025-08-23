@@ -1,0 +1,65 @@
+# ==== 実行時の基本設定（ETで紙トレから始める） ====
+runtime:
+  timezone: "America/New_York"   # すべてETで統一（tzdata＋フォールバック設計と一致）
+  mode: "paper"                  # paper / live
+
+# ==== データ供給（Phase-1：無料でまず動かす） ====
+data:
+  provider_realtime: "alpaca_iex_ws"  # 場中WSは Alpaca Market Data feed=iex
+  provider_eod: "polygon_rest"        # 夜間の参照/EODは Polygon REST
+  symbols_file: "configs/symbols.yml" # 監視銘柄リスト（次ステップで作成）
+
+# ==== 保存先（Runbookの標準パス） ====
+store:
+  root: "data"                   # data/ 以下に bars/ stream/ logs/ などを配置
+  parquet_compression: "snappy"  # バー保存の圧縮方式
+
+# ==== 夜間EODスクリーニング（基本8割の閾値） ====
+screening:
+  price_min: 2.0                 # 価格帯：$2–$20
+  price_max: 20.0
+  min_avg_volume: 1_000_000      # 20日平均出来高 ≥ 1M
+  min_avg_dollar_vol: 5_000_000  # 20日平均ドル出来高 ≥ $5M
+  atr_pct_min: 0.04              # ATR14 / Close = 4–12%
+  atr_pct_max: 0.12
+  float_min: 10_000_000          # フロート 10–60M を推奨
+  float_max: 60_000_000
+  ema_fast: 20                    # トレンド整合：Close > EMA20 > EMA50
+  ema_slow: 50
+  use_inside_day: true            # 圧縮サイン：Inside / NR7 を加点に使用
+  use_nr7: true
+
+# ==== スコアの重み（控えめな線形和） ====
+scoring:
+  weights:
+    pdh: 0.30
+    atr: 0.20
+    dollar_vol: 0.15
+    trend: 0.15
+    compression: 0.10
+    float: 0.10
+
+# ==== 戦略（同日は A か B どちらか片方のみ） ====
+strategy:
+  active_setup: "A"              # "A"=ORB+VWAP / "B"=AVWAP 押し目
+  orb_minutes: 5                 # ORBは5分（9:35で確定）
+  avwap_anchor: "09:30:00"       # AVWAPは9:30:00アンカー
+  vwap_reset_daily: true         # 毎日リセット（Runbookの意図を表すキー名で統一）
+
+# ==== リスク管理（PDFの規律を踏襲） ====
+risk:
+  risk_per_trade_pct: 0.005      # 1トレード=口座の0.5%（0.005〜0.01で運用）
+  daily_stop_R: 3                # 日次 −2〜3R で終了
+  spread_pct_max: 0.005          # スプレッド≦0.5%
+  slippage_warn_pct: 0.003       # スリッページ警告閾値 0.3%
+
+# ==== ブラケット（OCO） ====
+bracket:
+  take_profit_pct: [0.05, 0.10]  # +5%で半利確→建値、+10% 目安
+  stop_loss_pct: 0.025           # −2.5% 目安（2〜3%レンジ）
+  move_to_breakeven_after_first_tp: true
+
+# ==== 時間指定の運用ルール ====
+orders:
+  cancel_unfilled_by: "10:30:00" # 10:30 ET 未約定は全取消
+  force_close_by: "15:55:00"     # クローズ前に全決済（持ち越し禁止）
