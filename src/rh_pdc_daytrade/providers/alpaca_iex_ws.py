@@ -61,15 +61,32 @@ async def _stream_once(symbols: list[str], key: str, secret: str, feed: str = "i
     """何をする関数？：WSへ接続→認証→購読→受信ループ→NDJSON保存を1回の接続で実行します。"""
     url = ws_url(feed)
     async with websockets.connect(url, ping_interval=20, ping_timeout=20, close_timeout=5) as ws:
-        # 認証（成功後 "success"/"authenticated" が返る想定）
+        # 認証（"authenticated" を受信するまで待つ）
         await ws.send(json.dumps({"action": "auth", "key": key, "secret": secret}))
-        auth_msg = await ws.recv()
-        logger.info("alpaca auth reply: {}", auth_msg)
+        authenticated = False
+        while True:
+            frame = await ws.recv()
+            logger.info("alpaca auth reply: {}", frame)
+            try:
+                pl = json.loads(frame)
+            except Exception:
+                continue
+            msgs = pl if isinstance(pl, list) else [pl]
+            for m in msgs:
+                if m.get("T") == "error":
+                    logger.error("alpaca auth error: {}", m)
+                    return
+                if m.get("T") == "success" and str(m.get("msg")).lower() == "authenticated":
+                    authenticated = True
+                    break
+            if authenticated:
+                break
 
-        # 購読（barsのみ）
+        # 購読（barsのみ：まずはbarsを安定保存する最小構成）
         await ws.send(json.dumps(build_subscribe(symbols)))
-        sub_msg = await ws.recv()
-        logger.info("alpaca subscribe reply: {}", sub_msg)
+        sub_resp = await ws.recv()
+        logger.info("alpaca subscription reply: {}", sub_resp)
+
 
         # 受信ループ：配列または単発メッセージの両方に対応
         while True:

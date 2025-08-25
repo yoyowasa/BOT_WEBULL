@@ -1,5 +1,112 @@
-2025-08-24 05:02:58 | INFO | hello from logutil
-2025-08-24 06:17:06 | INFO | nightly_screen: start (logfile=E:\BOT_WEBULL\data\logs\bot.log)
-2025-08-24 06:17:06 | INFO | temporary stub written (Polygon integration TBD): data\eod\watchlist_A.json , data\eod\watchlist_B.json
-2025-08-24 06:37:40 | INFO | nightly_screen: start (logfile=E:\BOT_WEBULL\data\logs\bot.log)
-2025-08-24 06:37:40 | INFO | temporary ranked watchlists written (Polygon integration TBD): data\eod\watchlist_A.json , data\eod\watchlist_B.json
+2025-08-25 08:32:07 | INFO | force close (paper): no live positions; this is the hook for Webull SDK
+2025-08-25 08:32:07 | INFO | close_positions: 強制クローズ処理完了（logfile=E:\BOT_WEBULL\data\logs\bot.log）
+2025-08-25 08:45:26 | INFO | stub bars written: 4 symbols x 10 minutes (logfile=E:\BOT_WEBULL\data\logs\bot.log)
+2025-08-25 08:45:29 | INFO | compute_indicators: start (logfile=E:\BOT_WEBULL\data\logs\bot.log)
+2025-08-25 08:45:29 | INFO | indicators saved: data\bars\bars_1m_20250824.parquet , data\bars\indicators_20250824.parquet
+2025-08-25 08:45:32 | INFO | run_signals: 0 file(s) written (logfile=E:\BOT_WEBULL\data\logs\bot.log)
+2025-08-25 08:45:34 | INFO | place_orders: no signals (logfile=E:\BOT_WEBULL\data\logs\bot.log)
+2025-08-25 09:04:58 | INFO | run_signals: 4 file(s) written (logfile=E:\BOT_WEBULL\data\logs\bot.log)
+2025-08-25 09:04:59 | INFO | place_orders: start (4 file[s], mode=paper)
+2025-08-25 09:04:59 | INFO | PAPER ORDER A TSLA @ {'stop': 10.1, 'limit': 10.13, 'price': 10.13} | bracket: TP=10.64 SL=9.88 notes=A: ORB breakout + VWAP above (first hit in window)
+2025-08-25 09:04:59 | INFO | paper execution logged: data\logs\executions.csv
+2025-08-25 09:04:59 | INFO | PAPER ORDER A NVDA @ {'stop': 10.14, 'limit': 10.17, 'price': 10.17} | bracket: TP=10.68 SL=9.92 notes=A: ORB breakout + VWAP above (first hit in window)
+2025-08-25 09:04:59 | INFO | paper execution logged: data\logs\executions.csv
+2025-08-25 09:04:59 | INFO | PAPER ORDER A AAPL @ {'stop': 10.13, 'limit': 10.16, 'price': 10.16} | bracket: TP=10.67 SL=9.91 notes=A: ORB breakout + VWAP above (first hit in window)
+2025-08-25 09:04:59 | INFO | paper execution logged: data\logs\executions.csv
+2025-08-25 09:04:59 | INFO | PAPER ORDER A AMD @ {'stop': 10.1, 'limit': 10.13, 'price': 10.13} | bracket: TP=10.64 SL=9.88 notes=A: ORB breakout + VWAP above (first hit in window)
+2025-08-25 09:04:59 | INFO | paper execution logged: data\logs\executions.csv
+2025-08-25 09:04:59 | INFO | place_orders: done placed=4 / total=4
+2025-08-25 10:23:32 | INFO | daily_kpi: 20250824 のKPIを更新しました（logfile=E:\BOT_WEBULL\data\logs\bot.log）
+2025-08-25 10:23:32 | INFO | daily_kpi: output => data\logs\kpi_daily.csv
+2025-08-25 10:30:04 | INFO | ws_run start: feed=iex symbols=['AAPL', 'TSLA', 'AMD', 'NVDA'] (logfile=E:\BOT_WEBULL\data\logs\bot.log)
+2025-08-25 10:30:05 | INFO | alpaca auth reply: [{"T":"success","msg":"connected"}]
+2025-08-25 10:30:05 | INFO | alpaca auth reply: [{"T":"success","msg":"authenticated"}]
+2025-08-25 10:30:05 | INFO | alpaca subscription reply: [{"T":"subscription","bars":["AAPL","AMD","NVDA","TSLA"]}]
+2025-08-25 10:30:14 | INFO | ws cancelled after 10 seconds
+2025-08-25 10:30:16 | INFO | compute_indicators: start (logfile=E:\BOT_WEBULL\data\logs\bot.log)
+2025-08-25 10:30:16 | INFO | indicators saved: data\bars\bars_1m_20250824.parquet , data\bars\indicators_20250824.parquet
+2025-08-25 10:30:17 | INFO | run_signals: 4 file(s) written (logfile=E:\BOT_WEBULL\data\logs\bot.log)
+2025-08-25 10:30:18 | INFO | place_orders: start (4 file[s], mode=paper)
+2025-08-25 10:30:18 | INFO | PAPER ORDER A NVDA @ {'stop': 10.14, 'limit': 10.17, 'price': 10.17} | bracket: TP=10.68 SL=9.92 notes=A: ORB breakout + VWAP above (first hit in window)
+2025-08-25 10:30:18 | INFO | paper execution logged: data\logs\executions.csv
+2025-08-25 10:30:18 | INFO | PAPER ORDER A TSLA @ {'stop': 10.1, 'limit': 10.13, 'price': 10.13} | bracket: TP=10.64 SL=9.88 notes=A: ORB breakout + VWAP above (first hit in window)
+2025-08-25 10:30:18 | INFO | paper execution logged: data\logs\executions.csv
+2025-08-25 10:30:18 | INFO | PAPER ORDER A AAPL @ {'stop': 10.13, 'limit': 10.16, 'price': 10.16} | bracket: TP=10.67 SL=9.91 notes=A: ORB breakout + VWAP above (first hit in window)
+2025-08-25 10:30:18 | INFO | paper execution logged: data\logs\executions.csv
+2025-08-25 10:30:18 | INFO | PAPER ORDER A AMD @ {'stop': 10.1, 'limit': 10.13, 'price': 10.13} | bracket: TP=10.64 SL=9.88 notes=A: ORB breakout + VWAP above (first hit in window)
+2025-08-25 10:30:18 | INFO | paper execution logged: data\logs\executions.csv
+2025-08-25 10:30:18 | INFO | place_orders: done placed=4 / total=4
+2025-08-25 10:38:58 | INFO | cancelled (paper): NVDA
+2025-08-25 10:38:58 | INFO | cancelled (paper): TSLA
+2025-08-25 10:38:58 | INFO | cancelled (paper): AAPL
+2025-08-25 10:38:58 | INFO | cancelled (paper): AMD
+2025-08-25 10:38:58 | INFO | cancelled (paper): TSLA
+2025-08-25 10:38:58 | INFO | cancelled (paper): NVDA
+2025-08-25 10:38:58 | INFO | cancelled (paper): AAPL
+2025-08-25 10:38:58 | INFO | cancelled (paper): AMD
+2025-08-25 10:38:58 | INFO | cancel_unfilled: 8 件を取消（logfile=E:\BOT_WEBULL\data\logs\bot.log）
+2025-08-25 10:47:34 | INFO | daily_kpi: 20250824 のKPIを更新しました（logfile=E:\BOT_WEBULL\data\logs\bot.log）
+2025-08-25 10:47:34 | INFO | daily_kpi: output => data\logs\kpi_daily.csv
+2025-08-25 10:48:13 | INFO | daily_kpi: 20250824 のKPIを更新しました（logfile=E:\BOT_WEBULL\data\logs\bot.log）
+2025-08-25 10:48:13 | INFO | daily_kpi: output => data\logs\kpi_daily.csv
+2025-08-25 11:37:02 | INFO | run_signals: 4 file(s) written (logfile=E:\BOT_WEBULL\data\logs\bot.log)
+2025-08-25 11:37:03 | INFO | place_orders: start (4 file[s], mode=paper)
+2025-08-25 11:37:03 | INFO | PAPER ORDER A NVDA @ {'stop': 10.14, 'limit': 10.17, 'price': 10.17} | bracket: TP=10.68 SL=9.92 notes=A: ORB breakout + VWAP above (first hit in window)
+2025-08-25 11:37:03 | INFO | paper execution logged: data\logs\executions.csv
+2025-08-25 11:37:03 | INFO | PAPER ORDER A TSLA @ {'stop': 10.1, 'limit': 10.13, 'price': 10.13} | bracket: TP=10.64 SL=9.88 notes=A: ORB breakout + VWAP above (first hit in window)
+2025-08-25 11:37:03 | INFO | paper execution logged: data\logs\executions.csv
+2025-08-25 11:37:03 | INFO | PAPER ORDER A AAPL @ {'stop': 10.13, 'limit': 10.16, 'price': 10.16} | bracket: TP=10.67 SL=9.91 notes=A: ORB breakout + VWAP above (first hit in window)
+2025-08-25 11:37:03 | INFO | paper execution logged: data\logs\executions.csv
+2025-08-25 11:37:03 | INFO | PAPER ORDER A AMD @ {'stop': 10.1, 'limit': 10.13, 'price': 10.13} | bracket: TP=10.64 SL=9.88 notes=A: ORB breakout + VWAP above (first hit in window)
+2025-08-25 11:37:03 | INFO | paper execution logged: data\logs\executions.csv
+2025-08-25 11:37:03 | INFO | place_orders: done placed=4 / total=4
+2025-08-25 11:50:05 | INFO | run_signals: 4 file(s) written (logfile=E:\BOT_WEBULL\data\logs\bot.log)
+2025-08-25 11:50:06 | INFO | place_orders: start (4 file[s], mode=paper)
+2025-08-25 11:50:06 | INFO | PAPER ORDER A AMD @ {'stop': 10.1, 'limit': 10.13, 'price': 10.13} | bracket: TP=10.64 SL=9.88 notes=A: ORB breakout + VWAP above (first hit in window)
+2025-08-25 11:50:06 | INFO | paper execution logged: data\logs\executions.csv
+2025-08-25 11:50:06 | INFO | PAPER ORDER A NVDA @ {'stop': 10.14, 'limit': 10.17, 'price': 10.17} | bracket: TP=10.68 SL=9.92 notes=A: ORB breakout + VWAP above (first hit in window)
+2025-08-25 11:50:06 | INFO | paper execution logged: data\logs\executions.csv
+2025-08-25 11:50:06 | INFO | PAPER ORDER A TSLA @ {'stop': 10.1, 'limit': 10.13, 'price': 10.13} | bracket: TP=10.64 SL=9.88 notes=A: ORB breakout + VWAP above (first hit in window)
+2025-08-25 11:50:06 | INFO | paper execution logged: data\logs\executions.csv
+2025-08-25 11:50:06 | INFO | PAPER ORDER A AAPL @ {'stop': 10.13, 'limit': 10.16, 'price': 10.16} | bracket: TP=10.67 SL=9.91 notes=A: ORB breakout + VWAP above (first hit in window)
+2025-08-25 11:50:06 | INFO | paper execution logged: data\logs\executions.csv
+2025-08-25 11:50:06 | INFO | place_orders: done placed=4 / total=4
+2025-08-25 14:01:54 | INFO | daily_kpi: 20250825 のKPIを更新しました（logfile=E:\BOT_WEBULL\data\logs\bot.log）
+2025-08-25 14:01:54 | INFO | daily_kpi: output => data\logs\kpi_daily.csv
+2025-08-25 14:08:38 | WARNING | inputs not ready (bars/indicators). compute_indicators を先に実行してください。
+2025-08-25 14:08:39 | INFO | place_orders: no signals (logfile=E:\BOT_WEBULL\data\logs\bot.log)
+2025-08-25 14:15:18 | INFO | stub bars written: 4 symbols x 10 minutes (logfile=E:\BOT_WEBULL\data\logs\bot.log)
+2025-08-25 14:15:20 | INFO | compute_indicators: start (logfile=E:\BOT_WEBULL\data\logs\bot.log)
+2025-08-25 14:15:20 | INFO | indicators saved: data\bars\bars_1m_20250825.parquet , data\bars\indicators_20250825.parquet
+2025-08-25 14:15:23 | INFO | run_signals: 4 file(s) written (logfile=E:\BOT_WEBULL\data\logs\bot.log)
+2025-08-25 14:15:24 | INFO | place_orders: start (4 file[s], mode=paper)
+2025-08-25 14:15:24 | INFO | PAPER ORDER A AAPL @ {'stop': 10.13, 'limit': 10.16, 'price': 10.16} | bracket: TP=10.67 SL=9.91 notes=A: ORB breakout + VWAP above (first hit in window)
+2025-08-25 14:15:24 | INFO | paper execution logged: data\logs\executions.csv ; strategy entry logged: data\logs\strategy.csv
+2025-08-25 14:15:24 | INFO | PAPER ORDER A AMD @ {'stop': 10.1, 'limit': 10.13, 'price': 10.13} | bracket: TP=10.64 SL=9.88 notes=A: ORB breakout + VWAP above (first hit in window)
+2025-08-25 14:15:24 | INFO | paper execution logged: data\logs\executions.csv ; strategy entry logged: data\logs\strategy.csv
+2025-08-25 14:15:24 | INFO | PAPER ORDER A NVDA @ {'stop': 10.14, 'limit': 10.17, 'price': 10.17} | bracket: TP=10.68 SL=9.92 notes=A: ORB breakout + VWAP above (first hit in window)
+2025-08-25 14:15:24 | INFO | paper execution logged: data\logs\executions.csv ; strategy entry logged: data\logs\strategy.csv
+2025-08-25 14:15:24 | INFO | PAPER ORDER A TSLA @ {'stop': 10.1, 'limit': 10.13, 'price': 10.13} | bracket: TP=10.64 SL=9.88 notes=A: ORB breakout + VWAP above (first hit in window)
+2025-08-25 14:15:24 | INFO | paper execution logged: data\logs\executions.csv ; strategy entry logged: data\logs\strategy.csv
+2025-08-25 14:15:24 | INFO | place_orders: done placed=4 / total=4
+2025-08-25 15:22:33 | INFO | nightly_screen: start (logfile=E:\BOT_WEBULL\data\logs\bot.log)
+2025-08-25 15:22:38 | ERROR | polygon: failed AAPL (RetryError[<Future at 0x1c25ae2db50 state=finished raised UnicodeEncodeError>])
+2025-08-25 15:22:43 | ERROR | polygon: failed TSLA (RetryError[<Future at 0x1c25ae2e8d0 state=finished raised UnicodeEncodeError>])
+2025-08-25 15:22:48 | ERROR | polygon: failed AMD (RetryError[<Future at 0x1c25ae39d50 state=finished raised UnicodeEncodeError>])
+2025-08-25 15:22:53 | ERROR | polygon: failed NVDA (RetryError[<Future at 0x1c25ae2e510 state=finished raised UnicodeEncodeError>])
+2025-08-25 15:22:53 | WARNING | polygon returned empty dataset; falling back to stub.
+2025-08-25 15:22:53 | INFO | eod snapshot saved: data\eod\eod_features_20250825.parquet , data\eod\eod_features_20250825.csv
+2025-08-25 15:22:53 | INFO | ranked watchlists written (polygon dataset): data\eod\watchlist_A.json , data\eod\watchlist_B.json
+2025-08-25 16:08:22 | INFO | nightly_screen: start (logfile=E:\BOT_WEBULL\data\logs\bot.log)
+2025-08-25 16:08:27 | ERROR | polygon: failed AAPL (RetryError[<Future at 0x2cc86f4a210 state=finished raised UnicodeEncodeError>])
+2025-08-25 16:08:32 | ERROR | polygon: failed TSLA (RetryError[<Future at 0x2cc86f4a910 state=finished raised UnicodeEncodeError>])
+2025-08-25 16:08:38 | ERROR | polygon: failed AMD (RetryError[<Future at 0x2cc86f5a3d0 state=finished raised UnicodeEncodeError>])
+2025-08-25 16:08:42 | ERROR | polygon: failed NVDA (RetryError[<Future at 0x2cc86f59590 state=finished raised UnicodeEncodeError>])
+2025-08-25 16:08:42 | WARNING | polygon returned empty dataset; falling back to stub.
+2025-08-25 16:08:43 | INFO | eod snapshot saved: data\eod\eod_features_20250825.parquet , data\eod\eod_features_20250825.csv
+2025-08-25 16:08:43 | INFO | ranked watchlists written (stub dataset): data\eod\watchlist_A.json , data\eod\watchlist_B.json
+2025-08-25 16:18:00 | INFO | ws_run start: feed=iex symbols=['AAPL', 'TSLA', 'AMD', 'NVDA'] (logfile=E:\BOT_WEBULL\data\logs\bot.log)
+2025-08-25 16:18:01 | INFO | alpaca auth reply: [{"T":"success","msg":"connected"}]
+2025-08-25 16:18:02 | INFO | alpaca auth reply: [{"T":"success","msg":"authenticated"}]
+2025-08-25 16:18:02 | INFO | alpaca subscription reply: [{"T":"subscription","bars":["AAPL","AMD","NVDA","TSLA"]}]
+2025-08-25 16:18:11 | INFO | ws cancelled after 10 seconds

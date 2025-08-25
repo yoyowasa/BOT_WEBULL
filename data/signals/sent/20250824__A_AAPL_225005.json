@@ -1,0 +1,18 @@
+{
+  "date": "20250824",
+  "symbol": "AAPL",
+  "setup": "A",
+  "entryType": "stop_limit",
+  "qty": 200,
+  "entry": {
+    "stop": 10.13,
+    "limit": 10.16,
+    "price": 10.16
+  },
+  "bracket": {
+    "takeProfitPrice": 10.67,
+    "stopLossPrice": 9.91,
+    "moveToBreakevenOnTP": true
+  },
+  "notes": "A: ORB breakout + VWAP above (first hit in window)"
+}

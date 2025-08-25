@@ -1,5 +1,5 @@
 {
-  "generated_at": "2025-08-23T17:37:40.462938-04:00",
+  "generated_at": "2025-08-25T03:08:43.156017-04:00",
   "symbols": [
     "AAPL",
     "TSLA",
@@ -28,5 +28,5 @@
       "score_B": 0.8500000000000005
     }
   ],
-  "notes": "ranked by eod_screen.compute_scores_basic"
+  "notes": "ranked by nightly_screen (list/DataFrame both supported)"
 }

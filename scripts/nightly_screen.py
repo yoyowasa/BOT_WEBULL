@@ -15,7 +15,6 @@ import pandas as pd  # スコア計算の中間表（DataFrame）を扱うため
 from rh_pdc_daytrade.utils.envutil import load_dotenv_if_exists   # .envの自動読込（先頭で呼ぶ）  :contentReference[oaicite:5]{index=5}
 from rh_pdc_daytrade.utils.logutil import configure_logging        # ログを data/logs/bot.log に集約  :contentReference[oaicite:6]{index=6}
 from rh_pdc_daytrade.utils.configutil import load_config, load_symbols  # config/symbols の読込     :contentReference[oaicite:7]{index=7}
-import pandas as pd  # スコア計算の中間表（DataFrame）を扱うために使う
 
 # “EODロジック箱”から、ハードフィルタとスコア計算・ランキング関数を呼び出します。  :contentReference[oaicite:1]{index=1}
 from rh_pdc_daytrade.screening.eod_screen import (
@@ -24,7 +23,6 @@ from rh_pdc_daytrade.screening.eod_screen import (
     rank_watchlists          # 何をする関数？：A/B の上位N銘柄を選ぶ
 )
 from rh_pdc_daytrade.utils.io import write_parquet, write_csv  # 何をする関数？：EOD特徴量のParquet/CSV保存用（標準の保存口）。  :contentReference[oaicite:2]{index=2}
-from rh_pdc_daytrade.providers.polygon_rest import fetch_eod_dataset  # 何をする関数？：Polygon RESTでEOD特徴量を作る  :contentReference[oaicite:5]{index=5}
 from rh_pdc_daytrade.utils.timeutil import get_et_tz               # ET時刻の安定取得（tzdataフォールバック）  :contentReference[oaicite:8]{index=8}
 
 def write_watchlists_stub(symbols: list[str], out_dir: Path) -> tuple[Path, Path]:
@@ -47,32 +45,54 @@ def write_watchlists_stub(symbols: list[str], out_dir: Path) -> tuple[Path, Path
     b_path.write_bytes(orjson.dumps(payload, option=orjson.OPT_INDENT_2))
     return a_path, b_path
 
-def write_watchlists_ranked(topA_df: pd.DataFrame, topB_df: pd.DataFrame, out_dir: Path) -> tuple[Path, Path]:
+def write_watchlists_ranked(topA, topB, out_dir: Path) -> tuple[Path, Path]:
     """
     何をする関数？：
-      - スコア順の上位データ（A/B）から、Runbook準拠の watchlist_A/B.json を出力します。  :contentReference[oaicite:2]{index=2}
-      - JSONには生成時刻（ET）と“top”配列（スコア付き）も入れて、後工程の確認をしやすくします。
-    使い方：
-      a_path, b_path = write_watchlists_ranked(topA, topB, Path("data/eod"))
+      - A/B の「順位付きウォッチリスト」を Runbook準拠の data/eod/ に JSON で書き出します。
+      - 引数は **pandas.DataFrame** でも **list[str]** でも受け付け、呼び出し元の違いを吸収します。  :contentReference[oaicite:2]{index=2}
     """
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    def _to_payload(x):
+        """
+        何をする関数？：
+          - DataFrame または list[str] から、["symbols"], ["top"] フィールド用の配列を作ります。
+        """
+        if isinstance(x, pd.DataFrame):
+            # DataFrame：symbol列があればそれを採用。無ければ先頭列をシンボル相当として扱う。
+            if "symbol" in x.columns:
+                symbols = [str(s) for s in x["symbol"].tolist()]
+            else:
+                symbols = [str(s) for s in x.iloc[:, 0].tolist()]
+            top_list = x.to_dict(orient="records")
+        else:
+            # list[str]：そのままsymbolsにし、topは簡易レコード化。
+            symbols = [str(s) for s in list(x)]
+            top_list = [{"symbol": s} for s in symbols]
+        return symbols, top_list
+
+    symsA, topA_list = _to_payload(topA)  # 何をする行？：Aのsymbols配列とスコア明細を作る
+    symsB, topB_list = _to_payload(topB)  # 何をする行？：Bのsymbols配列とスコア明細を作る
+
     payloadA = {
         "generated_at": datetime.now(get_et_tz()).isoformat(),
-        "symbols": topA_df["symbol"].tolist(),
-        "top": topA_df.to_dict(orient="records"),
-        "notes": "ranked by eod_screen.compute_scores_basic"
+        "symbols": symsA,
+        "top": topA_list,
+        "notes": "ranked by nightly_screen (list/DataFrame both supported)"
     }
     payloadB = {
         "generated_at": datetime.now(get_et_tz()).isoformat(),
-        "symbols": topB_df["symbol"].tolist(),
-        "top": topB_df.to_dict(orient="records"),
-        "notes": "ranked by eod_screen.compute_scores_basic"
+        "symbols": symsB,
+        "top": topB_list,
+        "notes": "ranked by nightly_screen (list/DataFrame both supported)"
     }
+
     a_path = out_dir / "watchlist_A.json"
     b_path = out_dir / "watchlist_B.json"
     a_path.write_bytes(orjson.dumps(payloadA, option=orjson.OPT_INDENT_2))
     b_path.write_bytes(orjson.dumps(payloadB, option=orjson.OPT_INDENT_2))
     return a_path, b_path
+
 
 def build_df_stub(symbols: list[str]) -> pd.DataFrame:
     """
@@ -164,14 +184,30 @@ def main() -> int:
 
 
     # Polygonキー有り：EODを取得→ハードフィルタ→スコア→上位抽出→JSON（失敗時は雛形にフォールバック）
+    source_label = "polygon"  # 何をする行？：最終ログに表示する“データソース”。fallback時は 'stub' に切り替える。
+
     try:
-        df = fetch_eod_dataset(syms, api_key=polygon_key)  # 何をする関数？：Polygon RESTでEOD特徴量を作る
-        if df.empty:
-            logger.warning("polygon returned empty dataset; falling back to stub.")
-            df = build_df_stub(syms)  # 何をする関数？：最小の雛形データセットを作る
+        # 何をする行？：Polygonの“取り口”は使う時だけ読み込む（未実装でも起動を止めないための遅延インポート）。  :contentReference[oaicite:3]{index=3}
+        from rh_pdc_daytrade.providers.polygon_rest import fetch_eod_dataset  # 何をする関数？：Polygon RESTでEOD特徴量を作る  :contentReference[oaicite:4]{index=4}
     except Exception as e:
-        logger.error("polygon failed: {} ; fallback to stub dataset", e)
-        df = build_df_stub(syms)
+        logger.error("polygon provider import failed: {} ; fallback to stub dataset", e)
+        df = build_df_stub(syms)  # 何をする行？：最小の雛形EODを使って“止めずに”続行  :contentReference[oaicite:5]{index=5}
+        source_label = "stub"  # 何をする行？：例外時のフォールバックも 'stub' と明示する。
+
+    else:
+        try:
+            df = fetch_eod_dataset(syms, api_key=polygon_key)
+            if df.empty:
+                logger.warning("polygon returned empty dataset; falling back to stub.")
+                source_label = "stub"  # 何をする行？：実際はスタブで続行したことを最終ログに反映する。
+
+                df = build_df_stub(syms)
+        except Exception as e:
+            logger.error("polygon failed: {} ; fallback to stub dataset", e)
+            df = build_df_stub(syms)
+            source_label = "stub"  # 何をする行？：例外時のフォールバックも 'stub' と明示する。
+
+
 
     df = apply_hard_filters(df, cfg)                 # 何をする関数？：価格/出来高/ATR%/トレンド/フロートで合否を付ける
     df = compute_scores_basic(df, cfg)               # 何をする関数？：“基本8割”の線形和で A/B スコアを出す
@@ -180,7 +216,7 @@ def main() -> int:
 
     topA, topB = rank_watchlists(df, top_n=20)       # 何をする関数？：A/B の上位N銘柄を選ぶ
     a, b = write_watchlists_ranked(topA, topB, out_dir)  # 何をする関数？：Runbook準拠のA/B watchlistを書き出す
-    logger.info("ranked watchlists written (polygon dataset): {} , {}", a, b)
+    logger.info("ranked watchlists written ({} dataset): {} , {}", source_label, a, b)  # 何をする行？：実データソース名を正しく出す。
     return 0
 
 
