@@ -63,34 +63,45 @@ def _pick_symbols(cfg: dict) -> list[str]:
 def _load_session_symbols(cfg: dict) -> list[str]:
     """
     何をする関数？：
-      - config.strategy.active_setup（A or B）を見て、data/eod/watchlist_{A|B}.json の "symbols" を返します。
-      - ファイルが無い・壊れている時は symbols.yml の quick_test → それも無ければ ['AAPL','TSLA','AMD','NVDA'] に戻します。  
+      - config.strategy.active_setup（A/B）に対応する data/eod/watchlist_{A|B}.json の "symbols" を返します。
+      - ファイル無し・空・壊れのときは symbols.yml の quick_test → 最後に固定4銘柄へ“安全フォールバック”。
+      - どのファイルを使ったか／何銘柄読めたかをログに出し、原因調査を簡単にします。  :contentReference[oaicite:2]{index=2}
     """
-    from pathlib import Path         # この関数内だけで使うため関数内importにします
-    import orjson                    # 同上（他所へ影響させない）
-    setup = (cfg.get("strategy") or {}).get("active_setup", "A").upper()
+    from pathlib import Path            # 関数内だけで使うのでここに書く（ルール準拠）
+    import orjson                       # 同上（遅延インポートで起動失敗を防ぐ）
+
+    # A/Bの余計な空白や小文字を吸収（"A "→"A" など）。  :contentReference[oaicite:3]{index=3}
+    setup = str((cfg.get("strategy") or {}).get("active_setup", "A")).strip().upper()
     wl_path = Path("data") / "eod" / f"watchlist_{setup}.json"
+
+    # 1) 前夜のwatchlistを読む
     if wl_path.exists():
         try:
             data = orjson.loads(wl_path.read_bytes())
             syms = [s for s in data.get("symbols", []) if isinstance(s, str)]
             if syms:
+                logger.info("ws_run: using {} ({} symbols) for setup={}", wl_path, len(syms), setup)
                 return syms
-        except Exception:
-            from loguru import logger
-            logger.warning("ws_run: failed to read {} ; fallback to symbols.yml / defaults", wl_path)
+            else:
+                logger.warning("ws_run: {} has no 'symbols' or empty; fallback to symbols.yml", wl_path)
+        except Exception as e:
+            logger.warning("ws_run: failed to parse {} ({}); fallback to symbols.yml", wl_path, e)
 
-    # symbols.yml の quick_test グループへフォールバック（運用メモ準拠）  :contentReference[oaicite:3]{index=3}
+    # 2) symbols.yml の quick_test へフォールバック（運用手順の既定）。  :contentReference[oaicite:4]{index=4}
     try:
         from rh_pdc_daytrade.utils.configutil import load_symbols
         syms = load_symbols("quick_test", cfg["data"]["symbols_file"])
         if syms:
+            logger.info("ws_run: fallback to symbols.yml quick_test ({} symbols)", len(syms))
             return syms
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("ws_run: load_symbols failed ({}); fallback to defaults", e)
 
-    # 最後の砦（固定4銘柄）。“止めない”方針。  :contentReference[oaicite:4]{index=4}
-    return ["AAPL", "TSLA", "AMD", "NVDA"]
+    # 3) 最後の砦（固定4銘柄）。“止めない”運用。  :contentReference[oaicite:5]{index=5}
+    defaults = ["AAPL", "TSLA", "AMD", "NVDA"]
+    logger.info("ws_run: using defaults {} (no watchlist/symbols.yml available)", defaults)
+    return defaults
+
 
 def main() -> int:
     """
@@ -105,6 +116,12 @@ def main() -> int:
     logfile = configure_logging()           # data/logs/bot.log に出力  :contentReference[oaicite:15]{index=15}
     cfg = load_config()                     # configs/config.yaml を読み込み  :contentReference[oaicite:16]{index=16}
     syms = _load_session_symbols(cfg)  # 何をする行？：前夜のwatchlist（A/B）から当日の購読銘柄を決める。無ければ安全Fallback。  :contentReference[oaicite:5]{index=5}
+    # 何をする行？：IEXは最大30銘柄までなので、必要なら安全にトリミングします。  :contentReference[oaicite:2]{index=2}
+    import os  # この関数内でしか使わないため関数内importにします
+    feed = os.getenv("ALPACA_FEED", "").lower() or str((cfg.get("runtime") or {}).get("provider_realtime", "")).lower()
+    if "iex" in feed and len(syms) > 30:
+        logger.warning("ws_run: iex feed allows up to 30 symbols; trimming from {} to 30", len(syms))
+        syms = syms[:30]
 
     syms = _pick_symbols(cfg)
     if not syms:

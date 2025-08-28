@@ -55,6 +55,25 @@ def _mk_bracket(entry: float, cfg: dict) -> dict:
     sl_price = _price_round(entry * (1 - slp))
     return {"takeProfitPrice": tp_price, "stopLossPrice": sl_price, "moveToBreakevenOnTP": be}
 
+def _active_watchlist(cfg: dict) -> set[str] | None:
+    """
+    何をする関数？：
+      - config.strategy.active_setup（A/B）に対応する data/eod/watchlist_{A|B}.json を開き、
+        "symbols" の文字列リストを set で返します。ファイルが無ければ None（= 全件許可）。  :contentReference[oaicite:1]{index=1}
+    """
+    from pathlib import Path           # この関数内だけで使うため関数内importにします
+    import orjson                      # 同上（遅延インポートで起動を止めない）
+    setup = str((cfg.get("strategy") or {}).get("active_setup", "A")).strip().upper()
+    p = Path("data") / "eod" / f"watchlist_{setup}.json"
+    if not p.exists():
+        return None
+    try:
+        data = orjson.loads(p.read_bytes())
+        syms = [s for s in data.get("symbols", []) if isinstance(s, str)]
+        return set(syms) if syms else None
+    except Exception:
+        return None
+
 def _compute_qty(entry_price: float, sl_price: float, cfg: dict) -> int:
     """
     何をする関数？：
@@ -97,6 +116,8 @@ def _gen_A(df_bars: pd.DataFrame, df_ind: pd.DataFrame, cfg: dict) -> list[dict]
       具体条件：
         前足Close < ORB高値 かつ 今足Close ≥ ORB高値 かつ 今足Close ≥ 今足VWAP
     """
+    allowed = _active_watchlist(cfg)  # 何をする行？：前夜のwatchlist（A/B）に載っている銘柄だけ許可。無ければ全件許可。  :contentReference[oaicite:1]{index=1}
+
     if df_bars.empty or df_ind.empty:
         return []
     ind = df_ind.set_index("symbol")
@@ -104,6 +125,9 @@ def _gen_A(df_bars: pd.DataFrame, df_ind: pd.DataFrame, cfg: dict) -> list[dict]
     win_s, win_e = time(9, 30), time(10, 30)  # 勝負時間  :contentReference[oaicite:3]{index=3}
 
     for sym, g in df_bars.groupby("symbol", sort=False):
+        if allowed and sym not in allowed:  # 何をする行？：ウォッチ外はスキップ（同日A/B混在を防ぐ運用ガード）。  :contentReference[oaicite:5]{index=5}
+            continue
+
         if sym not in ind.index:
             continue
         # 勝負時間に絞る
@@ -144,12 +168,17 @@ def _gen_B(df_bars: pd.DataFrame, df_ind: pd.DataFrame, cfg: dict) -> list[dict]
       具体条件：
         前足Close < 前足AVWAP かつ 今足Close ≥ 今足AVWAP かつ 乖離 ≤ 0.3%
     """
+    allowed = _active_watchlist(cfg)  # 何をする行？：前夜のwatchlist（A/B）に載っている銘柄だけ許可。無ければ全件許可。  :contentReference[oaicite:3]{index=3}
+
     if df_bars.empty or df_ind.empty:
         return []
     out: list[dict] = []
     win_s, win_e = time(9, 30), time(10, 30)  # 勝負時間  :contentReference[oaicite:7]{index=7}
 
     for sym, g in df_bars.groupby("symbol", sort=False):
+        if allowed and sym not in allowed:  # 何をする行？：ウォッチ外はスキップ（同日A/B混在を防ぐ運用ガード）。  :contentReference[oaicite:5]{index=5}
+            continue
+
         g = g[(g["et"].dt.time >= win_s) & (g["et"].dt.time < win_e)].reset_index(drop=True)
         if len(g) < 2:
             continue
@@ -227,6 +256,15 @@ def main() -> int:
         signals = _gen_B(df_bars, df_ind, cfg)
 
     paths = _write_signals(signals, out_dir)
+# 何をする行？：書き出す各シグナルの“中身”をINFOで1行ずつログに残す（銘柄/セットアップ/価格/数量/TP/SL）。
+    for _sig in signals:
+        entry = (_sig.get("entry") or {})
+        br = (_sig.get("bracket") or {})
+        logger.info("signal: {} {} {} @ {} | qty={} | TP={} SL={}",
+                    _sig.get("date",""), _sig.get("setup",""), _sig.get("symbol",""),
+                    entry.get("price") or entry.get("limit") or entry.get("stop") or "",
+                    _sig.get("qty",""), br.get("takeProfitPrice",""), br.get("stopLossPrice",""))
+
     logger.info("run_signals: {} file(s) written (logfile={})", len(paths), logfile)
     return 0
 
