@@ -5,12 +5,13 @@
 from __future__ import annotations
 import asyncio                      # 非同期WSループ
 from pathlib import Path            # 保存先のパス操作
-from datetime import datetime       # ET日付でファイル名を付ける
+from datetime import datetime, timezone       # ET日付でファイル名を付ける
 import os                           # APIキー・FEEDの参照
 import json                         # 認証/購読メッセージ送信用（テキスト）
 import orjson                       # 受信データの高速書き込み（バイナリ）
 import websockets                   # WebSocketクライアント（^12系）
 from loguru import logger           # ログ（共通ポリシー）
+from pandas import to_datetime  # 何をする行？：ISO文字列の時刻を“UTCのnsエポック整数”へ変換するために使う。:contentReference[oaicite:2]{index=2}
 
 from rh_pdc_daytrade.utils.timeutil import get_et_tz  # ET日付の安定取得（tzdata+フォールバック）  :contentReference[oaicite:8]{index=8}
 
@@ -23,7 +24,7 @@ def ws_url(feed: str = "iex") -> str:
 
 def stream_dir() -> Path:
     """何をする関数？：標準の保存先 data/stream を返し、無ければ作ります（Runbook準拠）。"""  # :contentReference[oaicite:9]{index=9}
-    root = Path(__file__).resolve().parents[3]
+    root = Path(__file__).resolve().parents[4]
     d = root / "data" / "stream"
     d.mkdir(parents=True, exist_ok=True)
     return d
@@ -40,12 +41,46 @@ def append_ndjson(channel: str, obj: dict) -> None:
         f.write(orjson.dumps(obj))
         f.write(b"\n")
 
+def _coerce_ts_to_ns(ts) -> int:
+    """何をする関数？：IEXの't'が文字列ISO or 数値(秒/ms/us/ns)でも受け取り、nsのUNIX時間(int)に統一して返す"""
+    try:
+        # 数値系（int/float or 数字文字列）
+        if isinstance(ts, (int, float)) or (isinstance(ts, str) and ts.strip().isdigit()):
+            n = int(str(ts).strip())
+            digits = len(str(abs(n)))
+            # 桁数で単位を推定：秒=10桁前後、ms=13、us=16、ns=19
+            if digits >= 19:          # ns
+                return n
+            elif digits >= 16:        # us
+                return n * 1_000
+            elif digits >= 13:        # ms
+                return n * 1_000_000
+            else:                     # s
+                return n * 1_000_000_000
+
+        # ISO8601（例: '2025-08-28T09:02:00Z'）
+        if isinstance(ts, str):
+            s = ts.strip()
+            if s.endswith("Z"):
+                s = s[:-1] + "+00:00"  # 'Z' をUTCオフセットに変換
+            dt = datetime.fromisoformat(s)  # ここでawareに（+00:00付き）
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            dt_utc = dt.astimezone(timezone.utc)
+            return int(dt_utc.timestamp() * 1_000_000_000)
+
+    except Exception:
+        logger.warning("timestamp parse failed: {}", ts)  # 何かあっても落とさない
+
+    # 最終フォールバック（現在UTC）
+    return int(datetime.now(timezone.utc).timestamp() * 1_000_000_000)
+
 def standardize_bar(msg: dict) -> dict:
     """何をする関数？：IEXのBarメッセージを標準キーに整えます（T/S/t/o/h/l/c/v をそのまま使用）。"""  # :contentReference[oaicite:10]{index=10}
     return {
         "type": "bar",
         "S": msg.get("S"),  # シンボル
-        "t": msg.get("t"),  # タイムスタンプ（ns/μs）
+        "t": _coerce_ts_to_ns(msg.get("t")),  # 目的：NDJSON内のtを常にns整数で保存（compute側のint変換エラーを防ぐ）
         "o": msg.get("o"),
         "h": msg.get("h"),
         "l": msg.get("l"),
@@ -124,19 +159,33 @@ def connect_and_stream(symbols: list[str], feed: str = "iex", run_seconds: int |
     if not key or not secret:
         logger.warning("ALPACA_KEY_ID/ALPACA_SECRET_KEY is empty; skipping WS connect.")
         return 0
+    # 目的：同時接続を1本に制限するため、ロックファイルを原子的に作成（存在すれば接続をスキップ）
+    lock_path = stream_dir() / ".alpaca_ws.lock"
+    try:
+        fd = os.open(str(lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)  # ここで排他取得（既存なら例外）
+        with os.fdopen(fd, "w") as f:
+            f.write(f"pid={os.getpid()},created={datetime.utcnow().isoformat()}Z")
+    except FileExistsError:
+        logger.warning("single-instance guard: lock exists at {}; skip connect to avoid 406", lock_path)
+        return 0
 
+    # プロセス終了時にロックを自動削除（正常/異常終了どちらでも掃除）
+    import atexit  # この関数内だけで使うのでローカルimport（方針準拠）
+    atexit.register(lambda: (lock_path.exists() and lock_path.unlink()))
+    
     async def runner():
         # run_seconds が指定されていればその時間でキャンセル（テスト用）
         task = asyncio.create_task(_stream_once(symbols, key, secret, feed=feed))
-        if run_seconds and run_seconds > 0:
-            await asyncio.sleep(run_seconds)
-            task.cancel()
-            try:
-                await task
-            except asyncio.CancelledError:
-                logger.info("ws cancelled after {} seconds", run_seconds)
-        else:
-            await task
+        # 目的：テスト用の自動停止を外し、場中までWS接続を維持する（barsが溜まるようにする）
+        await task  # run_seconds による強制キャンセルは無効化
 
-    asyncio.run(runner())
+    # 目的：どんな終了経路でもロックを確実に解放する
+    try:
+        asyncio.run(runner())
+    finally:
+        try:
+            lock_path.unlink(missing_ok=True)
+        except Exception:
+            logger.warning("lock release failed: {}", lock_path)
     return 0
+

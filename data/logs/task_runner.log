@@ -1,2 +1,23 @@
 2025-08-28 17:58:16 | BOOT | nightly
 2025-08-28 17:58:40 | DONE | nightly
+2025-08-28 18:02:57 | BOOT | session
+2025-08-28 18:03:08 | ERROR | failed: compute_indicators.py (exit=1)
+2025-08-28 21:05:00 | BOOT | nightly
+2025-08-28 21:05:22 | DONE | nightly
+2025-08-28 22:29:00 | BOOT | session
+2025-08-28 22:29:12 | ERROR | failed: compute_indicators.py (exit=1)
+2025-08-28 23:30:01 | BOOT | cancel
+2025-08-28 23:30:01 | DONE | cancel
+2025-08-29 04:55:01 | BOOT | close
+2025-08-29 04:55:01 | DONE | close
+2025-08-29 05:10:01 | BOOT | kpi
+2025-08-29 05:10:03 | DONE | kpi
+2025-08-29 09:43:52 | BOOT | session
+2025-08-29 09:44:06 | DONE | session
+2025-08-29 10:17:48 | BOOT | session
+2025-08-29 10:18:00 | DONE | session
+2025-08-29 10:24:23 | BOOT | session
+2025-08-29 10:24:35 | DONE | session
+2025-08-29 10:58:43 | BOOT | session
+2025-08-29 11:48:13 | ERROR | failed: ws_run.py (exit=-1)
+2025-08-29 12:50:47 | BOOT | session
