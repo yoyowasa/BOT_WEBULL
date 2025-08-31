@@ -19,6 +19,29 @@ $ErrorActionPreference = 'Stop'
 # ─────────────────────────────────────────────────────────────────────────────
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 Set-Location $RepoRoot
+# 何をする関数？：ローカル時刻→ETに換算し、指定ET時刻まで“待つ”。初回バー（09:30:00 ET）をまたいでから処理を進めたい時に使います。
+# 何をする関数？：ET(米東部時間)の指定時刻まで待ってから制御を返す。寄り付き直後まで待ってからWS/計算を走らせるためのヘルパー。
+function Wait-UntilET([string]$HHmmss) {
+    # 何をする関数？：米東部時間(ET)の指定時刻まで待機して、寄り直後の不安定を避ける。
+    try {
+        $etTz = [System.TimeZoneInfo]::FindSystemTimeZoneById("Eastern Standard Time")
+    } catch {
+        $etTz = [System.TimeZoneInfo]::Local  # 何をする行？：万一ETが取れない環境でも動かす保険。
+    }
+    $nowLocal = [DateTime]::Now
+    $nowEt    = [System.TimeZoneInfo]::ConvertTime($nowLocal, $etTz)
+
+    $h,$m,$s  = $HHmmss.Split(":") | ForEach-Object { [int]$_ }
+    $targetEt = Get-Date -Year $nowEt.Year -Month $nowEt.Month -Day $nowEt.Day -Hour $h -Minute $m -Second $s
+    if ($nowEt -gt $targetEt) { $targetEt = $targetEt.AddDays(1) }  # 何をする行？：既に過ぎていたら翌日に繰り上げ。
+
+    $targetLocal = [System.TimeZoneInfo]::ConvertTime($targetEt, [System.TimeZoneInfo]::Local)
+    $waitSec     = [math]::Max(0, ($targetLocal - $nowLocal).TotalSeconds)
+    if ($waitSec -gt 0) { Start-Sleep -Seconds ([int][math]::Ceiling($waitSec)) }
+}
+
+
+
 [Environment]::CurrentDirectory = $RepoRoot
 
 # 何をする行？：logsディレクトリを必ず作り、起動マークを bot.log に1行だけ書く（タスク起動の可視化）。
@@ -71,6 +94,8 @@ switch ($Phase) {
   }
   'session' {
     # 何をする？：寄り後の一連（WS→指標→シグナル→紙トレ）。Runbookの勝負時間フロー。  :contentReference[oaicite:8]{index=8}
+    if ($WsSeconds -lt 75) { $WsSeconds = 90 }  # 何をする行？：WSの受信秒数が短いと当日のbarsが出ないため、75秒未満の指定は一律90秒へ底上げする安全弁
+
     $env:WS_RUN_SECONDS = "$WsSeconds"    # 何をする行？：WSの接続秒数（テスト用）
     Invoke-Step 'ws_run.py'
     Invoke-Step 'compute_indicators.py'

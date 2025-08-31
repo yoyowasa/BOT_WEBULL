@@ -1,0 +1,27 @@
+2025-08-29 21:05:04 | INFO | nightly_screen: start (logfile=E:\BOT_WEBULL\data\logs\bot.log)
+2025-08-29 21:05:10 | ERROR | polygon: failed AAPL (RetryError[<Future at 0x1f1caaac4d0 state=finished raised UnicodeEncodeError>])
+2025-08-29 21:05:15 | ERROR | polygon: failed TSLA (RetryError[<Future at 0x1f1caaaf0d0 state=finished raised UnicodeEncodeError>])
+2025-08-29 21:05:20 | ERROR | polygon: failed AMD (RetryError[<Future at 0x1f1caab9810 state=finished raised UnicodeEncodeError>])
+2025-08-29 21:05:25 | ERROR | polygon: failed NVDA (RetryError[<Future at 0x1f1caaafa90 state=finished raised UnicodeEncodeError>])
+2025-08-29 21:05:25 | WARNING | polygon returned empty dataset; falling back to stub.
+2025-08-29 21:05:26 | INFO | eod snapshot saved: data\eod\eod_features_20250829.parquet , data\eod\eod_features_20250829.csv
+2025-08-29 21:05:26 | INFO | ranked watchlists written (stub dataset): data\eod\watchlist_A.json , data\eod\watchlist_B.json
+2025-08-29 22:29:00 | INFO | run_all bootstrap (Phase=session, Py=)
+2025-08-29 22:29:01 | INFO | ws_run: using data\eod\watchlist_A.json (4 symbols) for setup=A
+2025-08-29 22:29:01 | INFO | ws_run start: feed=iex symbols=['AAPL', 'TSLA', 'AMD', 'NVDA'] (logfile=E:\BOT_WEBULL\data\logs\bot.log)
+2025-08-29 22:29:01 | WARNING | single-instance guard: lock exists at E:\data\stream\.alpaca_ws.lock; skip connect to avoid 406
+2025-08-29 22:30:16 | INFO | ws cancelled after 75 seconds
+2025-08-29 22:30:16 | INFO | compute_indicators: start (logfile=E:\BOT_WEBULL\data\logs\bot.log)
+2025-08-29 22:30:16 | WARNING | bars ndjson not found: data\stream\bars_20250829.ndjson
+2025-08-29 22:30:16 | WARNING | no bars to compute (data\stream\bars_20250829.ndjson). Is it outside regular hours?
+2025-08-29 22:30:17 | WARNING | inputs not ready (bars/indicators). compute_indicators を先に実行してください。
+2025-08-29 22:30:17 | INFO | place_orders: no signals (logfile=E:\BOT_WEBULL\data\logs\bot.log)
+2025-08-29 23:30:00 | INFO | run_all bootstrap (Phase=cancel, Py=)
+2025-08-29 23:30:01 | INFO | cancel_unfilled: 対象なし（logfile=E:\BOT_WEBULL\data\logs\bot.log）
+2025-08-30 04:55:01 | INFO | run_all bootstrap (Phase=close, Py=)
+2025-08-30 04:55:01 | INFO | force close (paper): no live positions; this is the hook for Webull SDK
+2025-08-30 04:55:01 | INFO | close_positions: 強制クローズ処理完了（logfile=E:\BOT_WEBULL\data\logs\bot.log）
+2025-08-30 05:10:01 | INFO | run_all bootstrap (Phase=kpi, Py=)
+2025-08-30 05:10:01 | INFO | daily_kpi: 20250829 のKPIを更新しました（logfile=E:\BOT_WEBULL\data\logs\bot.log）
+2025-08-30 05:10:01 | INFO | daily_kpi: output => data\logs\kpi_daily.csv
+2025-08-30 21:05:02 | INFO | run_all bootstrap (Phase=nightly, Py=)

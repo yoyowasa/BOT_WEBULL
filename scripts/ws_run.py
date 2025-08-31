@@ -4,6 +4,7 @@
 from __future__ import annotations
 from pathlib import Path  # パス操作（watchlistの場所を扱う）
 import os                 # 環境変数（ALPACA_FEED / WS_RUN_SECONDS）取得
+import threading  # 何をする行？：別スレッドのタイマーで“時間切れ終了”を実現するため
 from loguru import logger # 共通ログ（data/logs/bot.log に集約）  :contentReference[oaicite:4]{index=4}
 
 from rh_pdc_daytrade.utils.envutil import load_dotenv_if_exists   # .env 自動読込（最初に呼ぶ）  :contentReference[oaicite:5]{index=5}
@@ -128,14 +129,36 @@ def main() -> int:
         logger.error("no symbols to subscribe; exiting")
         return 1
 
-    feed = os.getenv("ALPACA_FEED", "iex")  # 既定は iex（無料でまず運用）  :contentReference[oaicite:17]{index=17}
-    run_seconds = None
-    val = os.getenv("WS_RUN_SECONDS", "").strip()
-    if val.isdigit():
-        run_seconds = int(val)
+    feed = os.getenv("ALPACA_FEED", "iex")  # 何をする行？：使用するリアルタイムfeed（既定はiex）を決定
 
-    logger.info("ws_run start: feed={} symbols={} (logfile={})", feed, syms, logfile)
-    return connect_and_stream(syms, feed=feed, run_seconds=run_seconds)
+    # 何をする行？：WSの実行秒数を確定（env優先／未指定→90秒／75秒未満→90秒に底上げ）
+    _env = os.getenv("WS_RUN_SECONDS", "").strip()
+    run_seconds = int(_env) if _env.isdigit() else (run_seconds or 0)
+    if run_seconds <= 0:
+        run_seconds = 90
+    if run_seconds < 75:
+        run_seconds = 90
+
+    logger.info("ws_run start: feed={} symbols={} run_seconds={} (logfile={})", feed, syms, run_seconds, logfile)  # 何をする行？：確定した秒数を開始ログに出す
+
+    # 何をする関数？：時間になったら必ず終了する“安全弁”（ログを書いてから確実に終わる）
+    def _on_timeout(sec: int):
+        logger.info(f"ws cancelled after {sec} seconds")
+        os._exit(0)
+
+    # 何をする行？：安全弁タイマーを起動してからWS本体を実行。通常終了ならタイマーを解除
+    _timer = threading.Timer(run_seconds, _on_timeout, args=(run_seconds,))
+    _timer.start()
+    try:
+        res = connect_and_stream(syms, feed=feed, run_seconds=run_seconds)  # 何をする行？：WS本体（run_seconds指定でも安全）
+    finally:
+        _timer.cancel()  # 何をする行？：WSが先に終わったときは安全弁を解除
+
+    logger.info(f"ws cancelled after {run_seconds} seconds")  # 何をする行？：終了秒数を“必ず”記録（切り分けしやすく）
+    return res
+
+
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

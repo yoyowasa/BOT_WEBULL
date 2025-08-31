@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 from pathlib import Path           # 入出力パス操作
-from datetime import datetime, time
+from datetime import datetime, timezone, time
 import pandas as pd                # 集計と指標計算に使う
 from loguru import logger          # ログ（共通ルールで data/logs/bot.log へ）
 import json  # 何をする行？：NDJSONを読む入口（json.loads）をフックするために使う標準ライブラリ。
@@ -16,6 +16,21 @@ from rh_pdc_daytrade.utils.timeutil import get_et_tz              # ET日付の�
 from rh_pdc_daytrade.utils.io import write_parquet, write_csv     # Parquet/CSVの標準保存口  :contentReference[oaicite:7]{index=7}
 
 _original_read_json = pd.read_json  # 何をする行？：元の pandas.read_json を退避。以後のラッパーから“本物”を確実に呼べるようにする。
+
+def _to_epoch_seconds(ts):
+    """この関数は、どんな時刻形式（文字列/秒/ms/ns/datetime）でもUTCのエポック秒(int)にそろえるための関数です。"""
+    if isinstance(ts, (int, float)):  # 数値なら桁で秒/ミリ/ナノを判定
+        s = int(ts)
+        if s > 1_000_000_000_000_000_000:  # ナノ秒(≈19桁) → 秒
+            return s // 1_000_000_000
+        if s > 1_000_000_000_000:          # ミリ秒(≈13桁) → 秒
+            return s // 1_000
+        return s                             # すでに秒
+    if isinstance(ts, str):                  # 文字列（例: '2025-08-28T09:02:00Z'）
+        iso = ts.replace('Z', '+00:00')      # 'Z' は +00:00 と等価にして fromisoformat で読める形に
+        return int(datetime.fromisoformat(iso).timestamp())
+    # datetime 等：UTC で timestamp → 秒
+    return int(ts.replace(tzinfo=timezone.utc).timestamp())
 
 def _bars_ndjson_path(channel: str = "bars") -> Path:
     """何をする関数？：ET日付の NDJSON（bars_YYYYMMDD.ndjson）のパスを返します。"""
@@ -30,14 +45,61 @@ def _read_bars_ndjson(p: Path, symbols: list[str]) -> pd.DataFrame:
     """
     import orjson  # この関数内でのみ使う高速JSON
     if not p.exists():
+        # 何をする行？：今日のbarsが無ければ最新bars_*.ndjsonへフォールバック（休日や寄り前の検証用）
+        if not os.path.exists(bars_path):
+            import os, glob  # 何をする行？：このブロック内だけで使う補助（ファイル列挙と更新時刻取得）
+            _cands = sorted(
+                glob.glob(os.path.join("data", "stream", "bars_*.ndjson")),
+                key=os.path.getmtime, reverse=True
+            )
+            if _cands:
+                logger.warning(f"bars ndjson not found: {bars_path} -> fallback to latest: {_cands[0]}")
+                bars_path = _cands[0]
+
         logger.warning("bars ndjson not found: {}", p)
         return pd.DataFrame(columns=["symbol", "et", "o", "h", "l", "c", "v"])
 
-    def _parse_ts(val: int) -> pd.Timestamp:
-        # 受信 t（エポック）が ns/us/ms/s のどれでも安全に ET に変換します。
-        v = int(val)
-        unit = "ns" if v > 1_000_000_000_000_000_000 else "us" if v > 1_000_000_000_000 else "ms" if v > 1_000_000_000 else "s"
-        return pd.to_datetime(v, unit=unit, utc=True).tz_convert(get_et_tz())
+    def _parse_ts(val):
+        # 何をする関数？：Alpacaの 't' を ns/us/ms/s の数値 or ISO文字列('...Z') どちらでも
+        # 安全に「ETタイムスタンプ(pd.Timestamp, tz=America/New_York)」へ変換する。
+        tz = get_et_tz()
+
+        # 1) 数値エポック（桁数で単位を推定）
+        if isinstance(val, (int, float)):
+            v = int(val)
+            # 10^18台=ns, 10^15台=us, 10^12台=ms, それ以外=s
+            if v >= 1_000_000_000_000_000_000:
+                dt = pd.to_datetime(v, unit="ns", utc=True)
+            elif v >= 1_000_000_000_000_000:
+                dt = pd.to_datetime(v, unit="us", utc=True)
+            elif v >= 1_000_000_000_000:
+                dt = pd.to_datetime(v, unit="ms", utc=True)
+            else:
+                dt = pd.to_datetime(v, unit="s", utc=True)
+            return dt.tz_convert(tz)
+
+        # 2) ISO文字列（例：'2025-08-28T09:02:00Z'）
+        if isinstance(val, str):
+            s = val.strip().replace("Z", "+00:00")  # 'Z' を UTC オフセットに正規化
+            try:
+                dt = pd.to_datetime(s, utc=True)
+                return dt.tz_convert(tz)
+            except Exception:
+                # 予備策：文字列中の数字だけを拾って再判定（ログに載せるほどではないので黙ってNaT可）
+                digits = "".join(ch for ch in s if ch.isdigit())
+                if digits:
+                    try:
+                        return _parse_ts(int(digits))  # 再帰で数値ルートへ
+                    except Exception:
+                        return pd.NaT
+                return pd.NaT
+
+        # 3) それ以外は欠損扱い
+        return pd.NaT
+
+
+
+
 
     rows = []
     with open(p, "rb") as f:
@@ -48,8 +110,11 @@ def _read_bars_ndjson(p: Path, symbols: list[str]) -> pd.DataFrame:
                 m = orjson.loads(line)
             except Exception:
                 continue
-            if not isinstance(m, dict) or m.get("type") != "bar":
+            # 何をする行？：JSON1件が辞書かを確認した上で、IEXの"T"か"type"のどちらかを取り、bar（b/ bar）だけを通す。
+            tmark = (m.get("T") or m.get("type"))
+            if not isinstance(m, dict) or tmark not in ("b", "bar"): 
                 continue
+
             s = str(m.get("S") or "").upper()
             if symbols and s not in symbols:
                 continue

@@ -1,105 +1,41 @@
-2025-08-28 17:58:16 | INFO | run_all bootstrap (Phase=nightly, Py=)
-2025-08-28 17:58:19 | INFO | nightly_screen: start (logfile=E:\BOT_WEBULL\data\logs\bot.log)
-2025-08-28 17:58:24 | ERROR | polygon: failed AAPL (RetryError[<Future at 0x135c982d750 state=finished raised UnicodeEncodeError>])
-2025-08-28 17:58:29 | ERROR | polygon: failed TSLA (RetryError[<Future at 0x135c982f0d0 state=finished raised UnicodeEncodeError>])
-2025-08-28 17:58:34 | ERROR | polygon: failed AMD (RetryError[<Future at 0x135c9839410 state=finished raised UnicodeEncodeError>])
-2025-08-28 17:58:39 | ERROR | polygon: failed NVDA (RetryError[<Future at 0x135c982f9d0 state=finished raised UnicodeEncodeError>])
-2025-08-28 17:58:40 | WARNING | polygon returned empty dataset; falling back to stub.
-2025-08-28 17:58:40 | INFO | eod snapshot saved: data\eod\eod_features_20250828.parquet , data\eod\eod_features_20250828.csv
-2025-08-28 17:58:40 | INFO | ranked watchlists written (stub dataset): data\eod\watchlist_A.json , data\eod\watchlist_B.json
-2025-08-28 18:02:57 | INFO | run_all bootstrap (Phase=session, Py=)
-2025-08-28 18:02:57 | INFO | ws_run: using data\eod\watchlist_A.json (4 symbols) for setup=A
-2025-08-28 18:02:57 | INFO | ws_run start: feed=iex symbols=['AAPL', 'TSLA', 'AMD', 'NVDA'] (logfile=E:\BOT_WEBULL\data\logs\bot.log)
-2025-08-28 18:02:58 | INFO | alpaca auth reply: [{"T":"success","msg":"connected"}]
-2025-08-28 18:02:58 | INFO | alpaca auth reply: [{"T":"success","msg":"authenticated"}]
-2025-08-28 18:02:58 | INFO | alpaca subscription reply: [{"T":"subscription","bars":["AAPL","AMD","NVDA","TSLA"]}]
-2025-08-28 18:03:07 | INFO | ws cancelled after 10 seconds
-2025-08-28 18:03:08 | INFO | compute_indicators: start (logfile=E:\BOT_WEBULL\data\logs\bot.log)
-2025-08-28 21:05:00 | INFO | run_all bootstrap (Phase=nightly, Py=)
-2025-08-28 21:05:01 | INFO | nightly_screen: start (logfile=E:\BOT_WEBULL\data\logs\bot.log)
-2025-08-28 21:05:06 | ERROR | polygon: failed AAPL (RetryError[<Future at 0x1eae833c2d0 state=finished raised UnicodeEncodeError>])
-2025-08-28 21:05:11 | ERROR | polygon: failed TSLA (RetryError[<Future at 0x1eae833f050 state=finished raised UnicodeEncodeError>])
-2025-08-28 21:05:16 | ERROR | polygon: failed AMD (RetryError[<Future at 0x1eae8349990 state=finished raised UnicodeEncodeError>])
-2025-08-28 21:05:21 | ERROR | polygon: failed NVDA (RetryError[<Future at 0x1eae833e7d0 state=finished raised UnicodeEncodeError>])
-2025-08-28 21:05:21 | WARNING | polygon returned empty dataset; falling back to stub.
-2025-08-28 21:05:21 | INFO | eod snapshot saved: data\eod\eod_features_20250828.parquet , data\eod\eod_features_20250828.csv
-2025-08-28 21:05:21 | INFO | ranked watchlists written (stub dataset): data\eod\watchlist_A.json , data\eod\watchlist_B.json
-2025-08-28 22:29:00 | INFO | run_all bootstrap (Phase=session, Py=)
-2025-08-28 22:29:01 | INFO | ws_run: using data\eod\watchlist_A.json (4 symbols) for setup=A
-2025-08-28 22:29:01 | INFO | ws_run start: feed=iex symbols=['AAPL', 'TSLA', 'AMD', 'NVDA'] (logfile=E:\BOT_WEBULL\data\logs\bot.log)
-2025-08-28 22:29:02 | INFO | alpaca auth reply: [{"T":"success","msg":"connected"}]
-2025-08-28 22:29:02 | INFO | alpaca auth reply: [{"T":"success","msg":"authenticated"}]
-2025-08-28 22:29:02 | INFO | alpaca subscription reply: [{"T":"subscription","bars":["AAPL","AMD","NVDA","TSLA"]}]
-2025-08-28 22:29:11 | INFO | ws cancelled after 10 seconds
-2025-08-28 22:29:12 | INFO | compute_indicators: start (logfile=E:\BOT_WEBULL\data\logs\bot.log)
-2025-08-28 23:30:01 | INFO | run_all bootstrap (Phase=cancel, Py=)
-2025-08-28 23:30:01 | INFO | cancel_unfilled: 対象なし（logfile=E:\BOT_WEBULL\data\logs\bot.log）
-2025-08-29 04:55:01 | INFO | run_all bootstrap (Phase=close, Py=)
-2025-08-29 04:55:01 | INFO | force close (paper): no live positions; this is the hook for Webull SDK
-2025-08-29 04:55:01 | INFO | close_positions: 強制クローズ処理完了（logfile=E:\BOT_WEBULL\data\logs\bot.log）
-2025-08-29 05:10:01 | INFO | run_all bootstrap (Phase=kpi, Py=)
-2025-08-29 05:10:03 | INFO | daily_kpi: 20250828 のKPIを更新しました（logfile=E:\BOT_WEBULL\data\logs\bot.log）
-2025-08-29 05:10:03 | INFO | daily_kpi: output => data\logs\kpi_daily.csv
-2025-08-29 09:43:52 | INFO | run_all bootstrap (Phase=session, Py=)
-2025-08-29 09:43:53 | INFO | ws_run: using data\eod\watchlist_A.json (4 symbols) for setup=A
-2025-08-29 09:43:53 | INFO | ws_run start: feed=iex symbols=['AAPL', 'TSLA', 'AMD', 'NVDA'] (logfile=E:\BOT_WEBULL\data\logs\bot.log)
-2025-08-29 09:43:54 | INFO | alpaca auth reply: [{"T":"success","msg":"connected"}]
-2025-08-29 09:43:54 | INFO | alpaca auth reply: [{"T":"success","msg":"authenticated"}]
-2025-08-29 09:43:54 | INFO | alpaca subscription reply: [{"T":"subscription","bars":["AAPL","AMD","NVDA","TSLA"]}]
-2025-08-29 09:44:03 | INFO | ws cancelled after 10 seconds
-2025-08-29 09:44:05 | INFO | compute_indicators: start (logfile=E:\BOT_WEBULL\data\logs\bot.log)
-2025-08-29 09:44:05 | ERROR | compute_indicators: non-fatal error: invalid literal for int() with base 10: '2025-08-28T09:02:00Z'
-2025-08-29 09:44:06 | WARNING | inputs not ready (bars/indicators). compute_indicators を先に実行してください。
-2025-08-29 09:44:06 | INFO | place_orders: no signals (logfile=E:\BOT_WEBULL\data\logs\bot.log)
-2025-08-29 10:17:48 | INFO | run_all bootstrap (Phase=session, Py=)
-2025-08-29 10:17:48 | INFO | ws_run: using data\eod\watchlist_A.json (4 symbols) for setup=A
-2025-08-29 10:17:48 | INFO | ws_run start: feed=iex symbols=['AAPL', 'TSLA', 'AMD', 'NVDA'] (logfile=E:\BOT_WEBULL\data\logs\bot.log)
-2025-08-29 10:17:49 | INFO | alpaca auth reply: [{"T":"success","msg":"connected"}]
-2025-08-29 10:17:49 | INFO | alpaca auth reply: [{"T":"success","msg":"authenticated"}]
-2025-08-29 10:17:50 | INFO | alpaca subscription reply: [{"T":"subscription","bars":["AAPL","AMD","NVDA","TSLA"]}]
-2025-08-29 10:17:59 | INFO | ws cancelled after 10 seconds
-2025-08-29 10:17:59 | INFO | compute_indicators: start (logfile=E:\BOT_WEBULL\data\logs\bot.log)
-2025-08-29 10:17:59 | ERROR | compute_indicators: non-fatal error: invalid literal for int() with base 10: '2025-08-28T09:02:00Z'
-2025-08-29 10:18:00 | WARNING | inputs not ready (bars/indicators). compute_indicators を先に実行してください。
-2025-08-29 10:18:00 | INFO | place_orders: no signals (logfile=E:\BOT_WEBULL\data\logs\bot.log)
-2025-08-29 10:24:23 | INFO | run_all bootstrap (Phase=session, Py=)
-2025-08-29 10:24:23 | INFO | ws_run: using data\eod\watchlist_A.json (4 symbols) for setup=A
-2025-08-29 10:24:23 | INFO | ws_run start: feed=iex symbols=['AAPL', 'TSLA', 'AMD', 'NVDA'] (logfile=E:\BOT_WEBULL\data\logs\bot.log)
-2025-08-29 10:24:24 | INFO | alpaca auth reply: [{"T":"success","msg":"connected"}]
-2025-08-29 10:24:24 | INFO | alpaca auth reply: [{"T":"success","msg":"authenticated"}]
-2025-08-29 10:24:24 | INFO | alpaca subscription reply: [{"T":"subscription","bars":["AAPL","AMD","NVDA","TSLA"]}]
-2025-08-29 10:24:33 | INFO | ws cancelled after 10 seconds
-2025-08-29 10:24:34 | INFO | compute_indicators: start (logfile=E:\BOT_WEBULL\data\logs\bot.log)
-2025-08-29 10:24:34 | ERROR | compute_indicators: non-fatal error: invalid literal for int() with base 10: '2025-08-28T09:02:00Z'
-2025-08-29 10:24:34 | WARNING | inputs not ready (bars/indicators). compute_indicators を先に実行してください。
-2025-08-29 10:24:35 | INFO | place_orders: no signals (logfile=E:\BOT_WEBULL\data\logs\bot.log)
-2025-08-29 10:58:43 | INFO | run_all bootstrap (Phase=session, Py=)
-2025-08-29 10:58:43 | INFO | ws_run: using data\eod\watchlist_A.json (4 symbols) for setup=A
-2025-08-29 10:58:43 | INFO | ws_run start: feed=iex symbols=['AAPL', 'TSLA', 'AMD', 'NVDA'] (logfile=E:\BOT_WEBULL\data\logs\bot.log)
-2025-08-29 10:58:44 | INFO | alpaca auth reply: [{"T":"success","msg":"connected"}]
-2025-08-29 10:58:44 | INFO | alpaca auth reply: [{"T":"success","msg":"authenticated"}]
-2025-08-29 10:58:44 | INFO | alpaca subscription reply: [{"T":"subscription","bars":["AAPL","AMD","NVDA","TSLA"]}]
-2025-08-29 11:41:56 | INFO | ws_run: using data\eod\watchlist_A.json (4 symbols) for setup=A
-2025-08-29 11:41:56 | INFO | ws_run start: feed=iex symbols=['AAPL', 'TSLA', 'AMD', 'NVDA'] (logfile=E:\BOT_WEBULL\data\logs\bot.log)
-2025-08-29 11:41:57 | INFO | alpaca auth reply: [{"T":"success","msg":"connected"}]
-2025-08-29 11:41:58 | INFO | alpaca auth reply: [{"T":"error","code":406,"msg":"connection limit exceeded"}]
-2025-08-29 11:41:58 | ERROR | alpaca auth error: {'T': 'error', 'code': 406, 'msg': 'connection limit exceeded'}
-2025-08-29 12:27:30 | INFO | ws_run: using data\eod\watchlist_A.json (4 symbols) for setup=A
-2025-08-29 12:27:30 | INFO | ws_run start: feed=iex symbols=['AAPL', 'TSLA', 'AMD', 'NVDA'] (logfile=E:\BOT_WEBULL\data\logs\bot.log)
-2025-08-29 12:27:31 | INFO | alpaca auth reply: [{"T":"success","msg":"connected"}]
-2025-08-29 12:27:31 | INFO | alpaca auth reply: [{"T":"success","msg":"authenticated"}]
-2025-08-29 12:27:31 | INFO | alpaca subscription reply: [{"T":"subscription","bars":["AAPL","AMD","NVDA","TSLA"]}]
-2025-08-29 12:32:00 | INFO | ws_run: using data\eod\watchlist_A.json (4 symbols) for setup=A
-2025-08-29 12:32:00 | INFO | ws_run start: feed=iex symbols=['AAPL', 'TSLA', 'AMD', 'NVDA'] (logfile=E:\BOT_WEBULL\data\logs\bot.log)
-2025-08-29 12:32:00 | INFO | alpaca auth reply: [{"T":"success","msg":"connected"}]
-2025-08-29 12:32:01 | INFO | alpaca auth reply: [{"T":"success","msg":"authenticated"}]
-2025-08-29 12:32:01 | INFO | alpaca subscription reply: [{"T":"subscription","bars":["AAPL","AMD","NVDA","TSLA"]}]
-2025-08-29 12:50:47 | INFO | run_all bootstrap (Phase=session, Py=)
-2025-08-29 12:50:48 | INFO | ws_run: using data\eod\watchlist_A.json (4 symbols) for setup=A
-2025-08-29 12:50:48 | INFO | ws_run start: feed=iex symbols=['AAPL', 'TSLA', 'AMD', 'NVDA'] (logfile=E:\BOT_WEBULL\data\logs\bot.log)
-2025-08-29 12:50:49 | INFO | alpaca auth reply: [{"T":"success","msg":"connected"}]
-2025-08-29 12:50:49 | INFO | alpaca auth reply: [{"T":"success","msg":"authenticated"}]
-2025-08-29 12:50:49 | INFO | alpaca subscription reply: [{"T":"subscription","bars":["AAPL","AMD","NVDA","TSLA"]}]
-2025-08-29 12:52:56 | INFO | compute_indicators: start (logfile=E:\BOT_WEBULL\data\logs\bot.log)
-2025-08-29 12:52:56 | WARNING | bars ndjson not found: data\stream\bars_20250828.ndjson
-2025-08-29 12:52:56 | WARNING | no bars to compute (data\stream\bars_20250828.ndjson). Is it outside regular hours?
+2025-08-30 21:05:05 | INFO | nightly_screen: start (logfile=E:\BOT_WEBULL\data\logs\bot.log)
+2025-08-30 21:05:10 | ERROR | polygon: failed AAPL (RetryError[<Future at 0x22b9634d9d0 state=finished raised UnicodeEncodeError>])
+2025-08-30 21:05:16 | ERROR | polygon: failed TSLA (RetryError[<Future at 0x22b9634f7d0 state=finished raised UnicodeEncodeError>])
+2025-08-30 21:05:21 | ERROR | polygon: failed AMD (RetryError[<Future at 0x22b96359d10 state=finished raised UnicodeEncodeError>])
+2025-08-30 21:05:26 | ERROR | polygon: failed NVDA (RetryError[<Future at 0x22b9634d250 state=finished raised UnicodeEncodeError>])
+2025-08-30 21:05:26 | WARNING | polygon returned empty dataset; falling back to stub.
+2025-08-30 21:05:26 | INFO | eod snapshot saved: data\eod\eod_features_20250830.parquet , data\eod\eod_features_20250830.csv
+2025-08-30 21:05:26 | INFO | ranked watchlists written (stub dataset): data\eod\watchlist_A.json , data\eod\watchlist_B.json
+2025-08-30 22:29:01 | INFO | run_all bootstrap (Phase=session, Py=)
+2025-08-30 22:29:02 | INFO | ws_run: using data\eod\watchlist_A.json (4 symbols) for setup=A
+2025-08-30 22:29:02 | INFO | ws_run start: feed=iex symbols=['AAPL', 'TSLA', 'AMD', 'NVDA'] (logfile=E:\BOT_WEBULL\data\logs\bot.log)
+2025-08-30 22:29:02 | WARNING | single-instance guard: lock exists at E:\data\stream\.alpaca_ws.lock; skip connect to avoid 406
+2025-08-30 22:30:17 | INFO | compute_indicators: start (logfile=E:\BOT_WEBULL\data\logs\bot.log)
+2025-08-30 22:30:17 | WARNING | bars ndjson not found: data\stream\bars_20250830.ndjson
+2025-08-30 22:30:17 | WARNING | no bars to compute (data\stream\bars_20250830.ndjson). Is it outside regular hours?
+2025-08-30 22:30:18 | WARNING | inputs not ready (bars/indicators). compute_indicators を先に実行してください。
+2025-08-30 22:30:18 | INFO | place_orders: no signals (logfile=E:\BOT_WEBULL\data\logs\bot.log)
+2025-08-30 23:30:01 | INFO | run_all bootstrap (Phase=cancel, Py=)
+2025-08-30 23:30:02 | INFO | cancel_unfilled: 対象なし（logfile=E:\BOT_WEBULL\data\logs\bot.log）
+2025-08-31 04:55:02 | INFO | run_all bootstrap (Phase=close, Py=)
+2025-08-31 04:55:02 | INFO | force close (paper): no live positions; this is the hook for Webull SDK
+2025-08-31 04:55:02 | INFO | close_positions: 強制クローズ処理完了（logfile=E:\BOT_WEBULL\data\logs\bot.log）
+2025-08-31 05:10:02 | INFO | run_all bootstrap (Phase=kpi, Py=)
+2025-08-31 05:10:02 | INFO | daily_kpi: 20250830 のKPIを更新しました（logfile=E:\BOT_WEBULL\data\logs\bot.log）
+2025-08-31 05:10:02 | INFO | daily_kpi: output => data\logs\kpi_daily.csv
+2025-08-31 09:26:01 | INFO | ws_run: using data\eod\watchlist_A.json (4 symbols) for setup=A
+2025-08-31 09:26:01 | INFO | ws_run start: feed=iex symbols=['AAPL', 'TSLA', 'AMD', 'NVDA'] (logfile=E:\BOT_WEBULL\data\logs\bot.log)
+2025-08-31 09:26:02 | INFO | alpaca auth reply: [{"T":"success","msg":"connected"}]
+2025-08-31 09:26:02 | INFO | alpaca auth reply: [{"T":"success","msg":"authenticated"}]
+2025-08-31 09:26:02 | INFO | alpaca subscription reply: [{"T":"subscription","bars":["AAPL","AMD","NVDA","TSLA"]}]
+2025-08-31 10:01:50 | INFO | ws_run: using data\eod\watchlist_A.json (4 symbols) for setup=A
+2025-08-31 10:01:50 | INFO | ws_run start: feed=iex symbols=['AAPL', 'TSLA', 'AMD', 'NVDA'] run_seconds=90 (logfile=E:\BOT_WEBULL\data\logs\bot.log)
+2025-08-31 10:01:51 | INFO | alpaca auth reply: [{"T":"success","msg":"connected"}]
+2025-08-31 10:01:51 | INFO | alpaca auth reply: [{"T":"success","msg":"authenticated"}]
+2025-08-31 10:01:51 | INFO | alpaca subscription reply: [{"T":"subscription","bars":["AAPL","AMD","NVDA","TSLA"]}]
+2025-08-31 10:35:38 | INFO | ws_run: using data\eod\watchlist_A.json (4 symbols) for setup=A
+2025-08-31 10:35:38 | INFO | ws_run start: feed=iex symbols=['AAPL', 'TSLA', 'AMD', 'NVDA'] run_seconds=90 (logfile=E:\BOT_WEBULL\data\logs\bot.log)
+2025-08-31 10:35:39 | INFO | alpaca auth reply: [{"T":"success","msg":"connected"}]
+2025-08-31 10:35:39 | INFO | alpaca auth reply: [{"T":"success","msg":"authenticated"}]
+2025-08-31 10:35:39 | INFO | alpaca subscription reply: [{"T":"subscription","bars":["AAPL","AMD","NVDA","TSLA"]}]
+2025-08-31 10:37:08 | INFO | ws cancelled after 90 seconds

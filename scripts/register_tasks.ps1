@@ -9,7 +9,7 @@ param(
   [ValidateSet('install','uninstall','list')]
   [string]$Action = 'install',
   # 何をする引数？：WS接続秒数（テスト用、sessionで run_all.ps1 に渡す）
-  [int]$WsSeconds = 10
+  [int]$WsSeconds = 75  # 何をする行？：WSの最短接続時間を75秒に引き上げ、最低限のバーを確実に収集する
 )
 
 $ErrorActionPreference = 'Stop'
@@ -139,7 +139,8 @@ function Uninstall-All {
   'WEBULL_Nightly','WEBULL_Session','WEBULL_Cancel','WEBULL_Close','WEBULL_KPI' | ForEach-Object { Remove-Job $_ }
 }
 
-function List-All {
+function Get-WebullScheduledTask {  # 何をする関数？：WEBULL関連のタスクだけを一覧表示します
+
   <#
     何をする関数？：
       - WEBULL関連のタスクだけを一覧表示します。
