@@ -4,13 +4,11 @@
 from __future__ import annotations
 from pathlib import Path  # パス操作（watchlistの場所を扱う）
 import os                 # 環境変数（ALPACA_FEED / WS_RUN_SECONDS）取得
-import threading  # 何をする行？：別スレッドのタイマーで“時間切れ終了”を実現するため
 from loguru import logger # 共通ログ（data/logs/bot.log に集約）  :contentReference[oaicite:4]{index=4}
 
 from rh_pdc_daytrade.utils.envutil import load_dotenv_if_exists   # .env 自動読込（最初に呼ぶ）  :contentReference[oaicite:5]{index=5}
 from rh_pdc_daytrade.utils.logutil import configure_logging        # ログ初期化（冪等）  :contentReference[oaicite:6]{index=6}
 from rh_pdc_daytrade.utils.configutil import load_config, load_symbols  # 設定/銘柄の共通ローダ  :contentReference[oaicite:7]{index=7}
-from rh_pdc_daytrade.providers.alpaca_iex_ws import connect_and_stream  # IEX WSへ接続・bars保存  :contentReference[oaicite:8]{index=8}
 
 def _watchlist_path(setup: str) -> Path:
     """
@@ -136,26 +134,30 @@ def main() -> int:
     run_seconds = int(_env) if _env.isdigit() else (run_seconds or 0)
     if run_seconds <= 0:
         run_seconds = 90
-    if run_seconds < 75:
+    if run_seconds < 90:                      # 何をする行？：短すぎる指定はバー不足を招くため下限を90秒にする
         run_seconds = 90
+    stream_dir = os.environ.get("STREAM_DIR") or os.path.join("data", "stream")  # 何をする行？：barsの保存先を環境変数で一元化（未設定はリポ内 data/stream）
+    os.makedirs(stream_dir, exist_ok=True)                                        # 何をする行？：保存ディレクトリを必ず用意（無ければ作成）
+    os.environ["STREAM_DIR"] = os.path.abspath(stream_dir)                         # 何をする行？：下位モジュール（WS/ロック/保存）にも同じ場所を伝える
+    logger.info("STREAM_DIR={}", os.environ["STREAM_DIR"])                         # 何をする行？：どこに書くかをログで明示（切り分け用）
+    logger.info("ws lock (expected): {}", os.path.join(os.environ["STREAM_DIR"], ".alpaca_ws.lock"))  # 何をする行？：WSが使う想定のロックパスを見える化（将来の誤検知を早期発見）
+    legacy_lock = os.path.join(r"E:\data\stream", ".alpaca_ws.lock")  # 何をする行？：過去バージョンの固定ロック場所を指す
+    if os.path.exists(legacy_lock) and os.path.abspath(os.environ["STREAM_DIR"]) != os.path.abspath(os.path.dirname(legacy_lock)):
+        try:
+            os.remove(legacy_lock)  # 何をする行？：STREAM_DIR外に残った“古いロック”を削除して接続スキップを防ぐ
+            logger.warning(f"removed legacy ws lock: {legacy_lock}")
+        except Exception as e:
+            logger.warning(f"failed to remove legacy ws lock: {legacy_lock} ({e})")
+
+    
+    from rh_pdc_daytrade.providers.alpaca_iex_ws import connect_and_stream  # 何をする行？：STREAM_DIR設定後にimportして、単一実行ロックと保存先を同じ環境変数で解決させる
 
     logger.info("ws_run start: feed={} symbols={} run_seconds={} (logfile={})", feed, syms, run_seconds, logfile)  # 何をする行？：確定した秒数を開始ログに出す
 
-    # 何をする関数？：時間になったら必ず終了する“安全弁”（ログを書いてから確実に終わる）
-    def _on_timeout(sec: int):
-        logger.info(f"ws cancelled after {sec} seconds")
-        os._exit(0)
-
-    # 何をする行？：安全弁タイマーを起動してからWS本体を実行。通常終了ならタイマーを解除
-    _timer = threading.Timer(run_seconds, _on_timeout, args=(run_seconds,))
-    _timer.start()
-    try:
-        res = connect_and_stream(syms, feed=feed, run_seconds=run_seconds)  # 何をする行？：WS本体（run_seconds指定でも安全）
-    finally:
-        _timer.cancel()  # 何をする行？：WSが先に終わったときは安全弁を解除
-
-    logger.info(f"ws cancelled after {run_seconds} seconds")  # 何をする行？：終了秒数を“必ず”記録（切り分けしやすく）
+    res = connect_and_stream(syms, feed=feed, run_seconds=run_seconds)
+    logger.info(f"ws cancelled after {run_seconds} seconds")
     return res
+
 
 
 

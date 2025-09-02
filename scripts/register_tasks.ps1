@@ -9,14 +9,17 @@ param(
   [ValidateSet('install','uninstall','list')]
   [string]$Action = 'install',
   # 何をする引数？：WS接続秒数（テスト用、sessionで run_all.ps1 に渡す）
-  [int]$WsSeconds = 75  # 何をする行？：WSの最短接続時間を75秒に引き上げ、最低限のバーを確実に収集する
+  [int]$WsSeconds = 90
+  # 何をする行？：WSの最短接続時間を75秒に引き上げ、最低限のバーを確実に収集する
 )
 
 $ErrorActionPreference = 'Stop'
 
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path  # 何をする行？：タスクの作業フォルダをリポジトリ直下に固定するための基準パス。
 # 何をする行？：PowerShell 7 (pwsh) を最優先で使い、無ければ Windows PowerShell にフォールバックする。
-$Pwsh = (Get-Command 'pwsh' -ErrorAction SilentlyContinue)?.Source
+$cmd = Get-Command 'pwsh' -ErrorAction SilentlyContinue   # 何をする行？：PowerShell 7 の実行ファイル（pwsh）を探す。無ければ $null のまま
+$Pwsh = if ($cmd) { $cmd.Source } else { $null }          # 何をする行？：?.Source を使わず PS5 互換でパスを取り出す（無ければ $null）
+
 if (-not $Pwsh) { $Pwsh = "$env:ProgramFiles\PowerShell\7\pwsh.exe" }
 if (-not (Test-Path $Pwsh)) { $Pwsh = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" }
 

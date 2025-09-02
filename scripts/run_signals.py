@@ -233,40 +233,111 @@ def _write_signals(signals: list[dict], out_dir: Path) -> list[Path]:
 def main() -> int:
     """
     何をする関数？：
-      - .env→ログ→config を読み、当日bars/indicatorsをもとに A/B シグナルJSONを data/signals/ に出力します。
-      - 同日は A/B どちらか片方の運用が原則（config.strategy.active_setup を尊重して出力）。  :contentReference[oaicite:15]{index=15}
+      - .env→ログ→config を読み、当日 bars/indicators をもとに A/B シグナルJSONを data/signals/ に出力します。
+      - inputs（当日分）が無ければ、ALLOW_BARS_FALLBACK が許可のときに data/bars 内の最新ペアへ自動フォールバックします。
     使い方：
       poetry run python scripts/run_signals.py
     """
+    # ① 環境準備
     load_dotenv_if_exists()
     logfile = configure_logging()
     cfg = load_config()
 
-    df_bars, df_ind = _read_inputs()
+    # ② まず「当日」パスを決めておく（以降で存在確認やログ表示に使う）
+    bars_path, indicators_path = _paths_for_today()  # Path, Path
+
+    # ③ 当日分を読み込み（無ければ空DF）
+    try:
+        df_bars = pd.read_parquet(bars_path) if bars_path.exists() else pd.DataFrame()
+    except Exception:
+        df_bars = pd.DataFrame()
+    try:
+        df_ind  = pd.read_parquet(indicators_path) if indicators_path.exists() else pd.DataFrame()
+    except Exception:
+        df_ind = pd.DataFrame()
+
+    # ④ 当日 inputs がどちらか欠けている場合は、許可されていれば「最新ペア」にフォールバック
+    if df_bars.empty or df_ind.empty:
+        allow_fb = (os.environ.get("ALLOW_BARS_FALLBACK", "1") != "0")
+        if allow_fb:
+            import glob, re
+            fb_bars, fb_ind = None, None
+            # bars_1m_*.parquet を新しい順に見て、同じ日付の indicators_*.parquet がある最初のペアを採用
+            cands = sorted(
+                glob.glob(str(Path("data") / "bars" / "bars_1m_*.parquet")),
+                key=os.path.getmtime,
+                reverse=True
+            )
+            for bp in cands:
+                m = re.search(r"(\d{8})", bp)
+                if not m:
+                    continue
+                d = m.group(1)
+                ip = str(Path("data") / "bars" / f"indicators_{d}.parquet")
+                if os.path.exists(ip):
+                    fb_bars, fb_ind = bp, ip
+                    break
+
+            if fb_bars and fb_ind:
+                # 採用先を明示
+                logger.warning(
+                    f"inputs not found for today -> fallback to latest: "
+                    f"{os.path.basename(fb_bars)} , {os.path.basename(fb_ind)}"
+                )
+                # 以降で参照するパスもフォールバック先に置き換え
+                bars_path, indicators_path = Path(fb_bars), Path(fb_ind)
+                # 実データを再読込
+                try:
+                    df_bars = pd.read_parquet(bars_path)
+                except Exception:
+                    df_bars = pd.DataFrame()
+                try:
+                    df_ind = pd.read_parquet(indicators_path)
+                except Exception:
+                    df_ind = pd.DataFrame()
+
+    # ⑤ それでも無ければ終了（運用フローを止めない）
     if df_bars.empty or df_ind.empty:
         logger.warning("inputs not ready (bars/indicators). compute_indicators を先に実行してください。")
         return 0
 
+    # ⑥ 入力のサマリをログ（検証用）
+    try:
+        n_rows = len(df_bars)
+        n_syms = df_bars["symbol"].nunique() if "symbol" in df_bars.columns else 0
+        logger.info(
+            "signals inputs loaded: rows={} symbols={} (bars='{}', ind='{}')",
+            n_rows, n_syms,
+            os.path.basename(str(bars_path)), os.path.basename(str(indicators_path))
+        )
+    except Exception:
+        pass
+
+    # ⑦ セットアップ別にシグナル生成
     setup = (cfg.get("strategy") or {}).get("active_setup", "A").upper()
     out_dir = Path("data") / "signals"
-    signals: list[dict] = []
     if setup == "A":
         signals = _gen_A(df_bars, df_ind, cfg)
     else:
         signals = _gen_B(df_bars, df_ind, cfg)
 
+    # ⑧ 書き出し＆各シグナルの要約ログ
     paths = _write_signals(signals, out_dir)
-# 何をする行？：書き出す各シグナルの“中身”をINFOで1行ずつログに残す（銘柄/セットアップ/価格/数量/TP/SL）。
-    for _sig in signals:
-        entry = (_sig.get("entry") or {})
-        br = (_sig.get("bracket") or {})
-        logger.info("signal: {} {} {} @ {} | qty={} | TP={} SL={}",
-                    _sig.get("date",""), _sig.get("setup",""), _sig.get("symbol",""),
-                    entry.get("price") or entry.get("limit") or entry.get("stop") or "",
-                    _sig.get("qty",""), br.get("takeProfitPrice",""), br.get("stopLossPrice",""))
+    for sig in signals:
+        entry = (sig.get("entry") or {})
+        br = (sig.get("bracket") or {})
+        logger.info(
+            "signal: {} {} {} @ {} | qty={} | TP={} SL={}",
+            sig.get("date", ""), sig.get("setup", ""), sig.get("symbol", ""),
+            entry.get("price") or entry.get("limit") or entry.get("stop") or "",
+            sig.get("qty", ""), br.get("takeProfitPrice", ""), br.get("stopLossPrice", "")
+        )
 
     logger.info("run_signals: {} file(s) written (logfile={})", len(paths), logfile)
     return 0
+
+
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

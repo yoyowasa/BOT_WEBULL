@@ -67,6 +67,11 @@ if ([string]::IsNullOrWhiteSpace($existing)) {
 } else {
   $env:PYTHONPATH = "$RepoRoot\src;$existing"
 }
+# 何をする行？：barsの保存/参照先の環境変数を統一（未設定ならリポ内 data\stream を使う）
+if ([string]::IsNullOrWhiteSpace($env:STREAM_DIR)) { $env:STREAM_DIR = (Join-Path $RepoRoot 'data\stream') }
+
+# 何をする行？：ディレクトリが無ければ作る（以降のWS/計算が同じ場所を見るため）
+if (!(Test-Path $env:STREAM_DIR)) { New-Item -ItemType Directory -Path $env:STREAM_DIR -Force | Out-Null }
 
 # 何をする行？：運用モード（paper / live）を子プロセスに渡します（各Pythonが参照）。
 $env:RUN_MODE = $Mode
@@ -97,7 +102,15 @@ switch ($Phase) {
     if ($WsSeconds -lt 75) { $WsSeconds = 90 }  # 何をする行？：WSの受信秒数が短いと当日のbarsが出ないため、75秒未満の指定は一律90秒へ底上げする安全弁
 
     $env:WS_RUN_SECONDS = "$WsSeconds"    # 何をする行？：WSの接続秒数（テスト用）
+    # 何をする行？：WSの受信秒数を下限90秒に統一（短いと当日barsが不足するため）
+    $ws = 0; [void][int]::TryParse(($env:WS_RUN_SECONDS), [ref]$ws)
+    if ($ws -lt 90) { $env:WS_RUN_SECONDS = '90' }  # 何をする行？：WSの受信秒数が90秒未満なら必ず90秒に底上げする
+
+
     Invoke-Step 'ws_run.py'
+    # 何をする行？：セッション中はフォールバック無効（誤って前日barsを読むのを防ぐ）。それ以外のフェーズは有効。
+    if ($Phase -eq 'session') { $env:ALLOW_BARS_FALLBACK = '0' } else { $env:ALLOW_BARS_FALLBACK = '1' }
+
     Invoke-Step 'compute_indicators.py'
     Invoke-Step 'run_signals.py'
     Invoke-Step 'place_orders.py'

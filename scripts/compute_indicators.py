@@ -6,6 +6,8 @@ from pathlib import Path           # 入出力パス操作
 from datetime import datetime, timezone, time
 import pandas as pd                # 集計と指標計算に使う
 from loguru import logger          # ログ（共通ルールで data/logs/bot.log へ）
+import os        # 何をする行？：ファイル存在確認・パス操作（fallbackで使用）
+import glob      # 何をする行？：bars_*.ndjson を列挙するため（fallbackで使用）
 import json  # 何をする行？：NDJSONを読む入口（json.loads）をフックするために使う標準ライブラリ。
 _original_json_loads = json.loads  # 何をする行？：本物の loads を退避。後でラッパーから必ず参照するため。
 
@@ -34,8 +36,12 @@ def _to_epoch_seconds(ts):
 
 def _bars_ndjson_path(channel: str = "bars") -> Path:
     """何をする関数？：ET日付の NDJSON（bars_YYYYMMDD.ndjson）のパスを返します。"""
-    et_date = datetime.now(get_et_tz()).strftime("%Y%m%d")
-    return Path("data") / "stream" / f"{channel}_{et_date}.ndjson"
+    et_date = datetime.now(get_et_tz()).strftime("%Y%m%d")  # 何をする行？：入力NDJSONは“いまのET日付”で探す（ここではdf_1mは使わない）
+
+
+    stream_dir = Path(os.environ.get("STREAM_DIR", str(Path("data") / "stream")))  # 何をする行？：barsの参照先を環境変数で一元化（未設定はリポ内 data/stream）
+    return Path(stream_dir) / f"{channel}_{et_date}.ndjson"  # 何をする行？：当日のNDJSONファイルのフルパスを返す
+
 
 def _read_bars_ndjson(p: Path, symbols: list[str]) -> pd.DataFrame:
     """
@@ -45,19 +51,35 @@ def _read_bars_ndjson(p: Path, symbols: list[str]) -> pd.DataFrame:
     """
     import orjson  # この関数内でのみ使う高速JSON
     if not p.exists():
-        # 何をする行？：今日のbarsが無ければ最新bars_*.ndjsonへフォールバック（休日や寄り前の検証用）
-        if not os.path.exists(bars_path):
-            import os, glob  # 何をする行？：このブロック内だけで使う補助（ファイル列挙と更新時刻取得）
-            _cands = sorted(
-                glob.glob(os.path.join("data", "stream", "bars_*.ndjson")),
-                key=os.path.getmtime, reverse=True
-            )
-            if _cands:
-                logger.warning(f"bars ndjson not found: {bars_path} -> fallback to latest: {_cands[0]}")
-                bars_path = _cands[0]
+# 何をする行？：環境変数でフォールバックの有効/無効を切替（本番で前日データ誤参照を防ぐ）
+        _allow_fb = os.environ.get("ALLOW_BARS_FALLBACK", "1").lower()
+        if _allow_fb not in ("1", "true", "yes", "on"):
+            logger.warning(f"bars ndjson not found: {p} (fallback disabled)")  # 何をする行？：無効化されていることを明示
+            return pd.DataFrame(columns=["symbol", "et", "o", "h", "l", "c", "v"])  # 何をする行？：空DFで正常終了（後段はスキップ）
 
-        logger.warning("bars ndjson not found: {}", p)
-        return pd.DataFrame(columns=["symbol", "et", "o", "h", "l", "c", "v"])
+        # 何をする行？：今日のbarsが無いとき、候補ディレクトリから“最新bars”を探して p を差し替える
+        search_dirs = [Path("data") / "stream"]  # 何をする行？：通常の保存先
+        ext_dir = os.environ.get("STREAM_DIR", r"E:\data\stream")  # 何をする行？：外部保存先（環境変数優先、無ければE:\data\stream）
+        if ext_dir:
+            search_dirs.append(Path(ext_dir))
+
+        candidates = []
+        for root in search_dirs:
+            if root and root.exists():
+                # 何をする行？：bars_*.ndjson を更新時刻の新しい順に集める
+                candidates.extend(sorted(root.glob("bars_*.ndjson"),
+                                        key=lambda q: q.stat().st_mtime,
+                                        reverse=True))
+
+        if candidates:
+            logger.warning(f"bars ndjson not found: {p} -> fallback to latest: {candidates[0]}")  # 何をする行？：切替先をログに出す
+            p = candidates[0]  # 何をする行？：ここが肝心。以降はこの実在ファイルを読む
+        else:
+            logger.warning(f"bars ndjson not found: {p}")  # 何をする行？：見つからなかったことを記録
+            logger.warning("no bars to compute (searched: {})".format(", ".join(str(x) for x in search_dirs)))  # 何をする行？：探した場所も記録
+            return pd.DataFrame(columns=["symbol", "et", "o", "h", "l", "c", "v"])  # 何をする行？：空DFで正常終了（後段はスキップ）
+
+
 
     def _parse_ts(val):
         # 何をする関数？：Alpacaの 't' を ns/us/ms/s の数値 or ISO文字列('...Z') どちらでも
@@ -100,6 +122,7 @@ def _read_bars_ndjson(p: Path, symbols: list[str]) -> pd.DataFrame:
 
 
 
+    logger.info(f"reading bars ndjson: {p}")  # 何をする行？：実際に読み込むbarsファイルのフルパスをログに出して原因切り分けを容易にする
 
     rows = []
     with open(p, "rb") as f:
@@ -183,7 +206,7 @@ def _save_outputs(df_1m: pd.DataFrame, summary: pd.DataFrame) -> tuple[Path, Pat
       - 計算した 1分バー（VWAP/AVWAP付き）と、銘柄ごとの ORB/VWAP/AVWAP の**当日スナップショット**を保存します。
       - 保存先：data/bars/bars_1m_YYYYMMDD.parquet / indicators_YYYYMMDD.parquet（CSVも同名で保存）。  :contentReference[oaicite:10]{index=10}
     """
-    et_date = datetime.now(get_et_tz()).strftime("%Y%m%d")
+    et_date = df_1m["et"].dt.date.min().strftime("%Y%m%d")  # 何をする行？：保存ファイルの日付を“実際に読み込んだバーのET日付”に合わせる
     out_dir = Path("data") / "bars"
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -314,9 +337,10 @@ def main() -> int:
     ndjson_path = _bars_ndjson_path("bars")
     # symbols は空にして「ファイル内の全銘柄」を対象に（将来は cfg のA/Bに合わせて渡せます）
     df = _read_bars_ndjson(ndjson_path, symbols=[])
+    logger.info(f"bars loaded: rows={len(df)} symbols={(0 if df.empty else df['symbol'].nunique())}")  # 何をする行？：読み込んだ行数と銘柄数を表示して“受信不足”をすぐ判定できるようにする
+
 
     if df.empty:
-        logger.warning("no bars to compute ({}). Is it outside regular hours?", ndjson_path)
         return 0  # 市場時間外は bars が0でも正常（Runbookの想定）  :contentReference[oaicite:12]{index=12}
 
     df = _compute_vwap(df)
