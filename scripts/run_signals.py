@@ -233,108 +233,107 @@ def _write_signals(signals: list[dict], out_dir: Path) -> list[Path]:
 def main() -> int:
     """
     何をする関数？：
-      - .env→ログ→config を読み、当日 bars/indicators をもとに A/B シグナルJSONを data/signals/ に出力します。
-      - inputs（当日分）が無ければ、ALLOW_BARS_FALLBACK が許可のときに data/bars 内の最新ペアへ自動フォールバックします。
+      - .env→ログ→config を読み、当日bars/indicatorsをもとに A/B シグナルJSONを data/signals/ に出力します。
+      - 同日は A/B どちらか片方の運用が原則（config.strategy.active_setup を尊重、ただし ACTIVE_SETUP で一時上書き可）。
     使い方：
       poetry run python scripts/run_signals.py
     """
-    # ① 環境準備
     load_dotenv_if_exists()
     logfile = configure_logging()
     cfg = load_config()
 
-    # ② まず「当日」パスを決めておく（以降で存在確認やログ表示に使う）
-    bars_path, indicators_path = _paths_for_today()  # Path, Path
+    # --- A/B の決定（環境変数で一時上書き可） ----------------------------
+    setup_cfg = ((cfg.get("strategy") or {}).get("active_setup", "A")).upper()
+    env_setup = (os.environ.get("ACTIVE_SETUP") or "").strip().upper()
+    if env_setup in {"A", "B"} and env_setup != setup_cfg:
+        logger.info("override setup: {} -> {} (ACTIVE_SETUP)", setup_cfg, env_setup)
+        setup = env_setup
+        # _active_watchlist() 側でも同じセットアップを見るよう、cfgにも反映
+        cfg.setdefault("strategy", {})["active_setup"] = setup
+    else:
+        setup = setup_cfg
 
-    # ③ 当日分を読み込み（無ければ空DF）
-    try:
-        df_bars = pd.read_parquet(bars_path) if bars_path.exists() else pd.DataFrame()
-    except Exception:
-        df_bars = pd.DataFrame()
-    try:
-        df_ind  = pd.read_parquet(indicators_path) if indicators_path.exists() else pd.DataFrame()
-    except Exception:
-        df_ind = pd.DataFrame()
+    # --- 入力の決定（今日 or フォールバック） ----------------------------
+    from pathlib import Path
+    import glob, re
 
-    # ④ 当日 inputs がどちらか欠けている場合は、許可されていれば「最新ペア」にフォールバック
-    if df_bars.empty or df_ind.empty:
-        allow_fb = (os.environ.get("ALLOW_BARS_FALLBACK", "1") != "0")
-        if allow_fb:
-            import glob, re
-            fb_bars, fb_ind = None, None
-            # bars_1m_*.parquet を新しい順に見て、同じ日付の indicators_*.parquet がある最初のペアを採用
-            cands = sorted(
-                glob.glob(str(Path("data") / "bars" / "bars_1m_*.parquet")),
-                key=os.path.getmtime,
-                reverse=True
-            )
-            for bp in cands:
-                m = re.search(r"(\d{8})", bp)
-                if not m:
-                    continue
-                d = m.group(1)
-                ip = str(Path("data") / "bars" / f"indicators_{d}.parquet")
-                if os.path.exists(ip):
-                    fb_bars, fb_ind = bp, ip
-                    break
+    # 今日の想定パス
+    p_bars_today, p_ind_today = _paths_for_today()
+    have_today = p_bars_today.exists() and p_ind_today.exists()
 
-            if fb_bars and fb_ind:
-                # 採用先を明示
-                logger.warning(
-                    f"inputs not found for today -> fallback to latest: "
-                    f"{os.path.basename(fb_bars)} , {os.path.basename(fb_ind)}"
-                )
-                # 以降で参照するパスもフォールバック先に置き換え
-                bars_path, indicators_path = Path(fb_bars), Path(fb_ind)
-                # 実データを再読込
-                try:
-                    df_bars = pd.read_parquet(bars_path)
-                except Exception:
-                    df_bars = pd.DataFrame()
-                try:
-                    df_ind = pd.read_parquet(indicators_path)
-                except Exception:
-                    df_ind = pd.DataFrame()
+    df_bars: pd.DataFrame
+    df_ind: pd.DataFrame
+    bars_path: str
+    indicators_path: str
 
-    # ⑤ それでも無ければ終了（運用フローを止めない）
-    if df_bars.empty or df_ind.empty:
-        logger.warning("inputs not ready (bars/indicators). compute_indicators を先に実行してください。")
-        return 0
-
-    # ⑥ 入力のサマリをログ（検証用）
-    try:
-        n_rows = len(df_bars)
-        n_syms = df_bars["symbol"].nunique() if "symbol" in df_bars.columns else 0
+    if have_today:
+        bars_path, indicators_path = str(p_bars_today), str(p_ind_today)
+        df_bars = pd.read_parquet(bars_path)
+        df_ind  = pd.read_parquet(indicators_path)
         logger.info(
             "signals inputs loaded: rows={} symbols={} (bars='{}', ind='{}')",
-            n_rows, n_syms,
-            os.path.basename(str(bars_path)), os.path.basename(str(indicators_path))
+            len(df_bars), df_bars["symbol"].nunique() if not df_bars.empty else 0,
+            os.path.basename(bars_path), os.path.basename(indicators_path),
         )
-    except Exception:
-        pass
+    else:
+        allow_fb = (os.environ.get("ALLOW_BARS_FALLBACK", "1") != "0")
+        if not allow_fb:
+            logger.warning("inputs not ready (bars/indicators) and fallback disabled. compute_indicators を先に実行してください。")
+            return 0
 
-    # ⑦ セットアップ別にシグナル生成
-    setup = (cfg.get("strategy") or {}).get("active_setup", "A").upper()
+        # bars_1m_*.parquet を新しい順に見て、同日付の indicators_*.parquet がある最初の組を採用
+        cands = sorted(glob.glob("data/bars/bars_1m_*.parquet"), key=os.path.getmtime, reverse=True)
+        fb_bars, fb_ind = None, None
+        for bp in cands:
+            m = re.search(r"(\d{8})", bp)
+            if not m:
+                continue
+            d = m.group(1)
+            ip = f"data/bars/indicators_{d}.parquet"
+            if os.path.exists(ip):
+                fb_bars, fb_ind = bp, ip
+                break
+
+        if not (fb_bars and fb_ind):
+            logger.warning("inputs not ready (bars/indicators). compute_indicators を先に実行してください。")
+            return 0
+
+        bars_path, indicators_path = fb_bars, fb_ind
+        logger.warning(
+            "inputs not found for today -> fallback to latest: {} , {}",
+            os.path.basename(bars_path), os.path.basename(indicators_path),
+        )
+        df_bars = pd.read_parquet(bars_path)
+        df_ind  = pd.read_parquet(indicators_path)
+        logger.info(
+            "signals inputs loaded: rows={} symbols={} (bars='{}', ind='{}')",
+            len(df_bars), df_bars["symbol"].nunique() if not df_bars.empty else 0,
+            os.path.basename(bars_path), os.path.basename(indicators_path),
+        )
+
+    # --- シグナル生成 ------------------------------------------------------
     out_dir = Path("data") / "signals"
     if setup == "A":
         signals = _gen_A(df_bars, df_ind, cfg)
     else:
         signals = _gen_B(df_bars, df_ind, cfg)
 
-    # ⑧ 書き出し＆各シグナルの要約ログ
     paths = _write_signals(signals, out_dir)
-    for sig in signals:
-        entry = (sig.get("entry") or {})
-        br = (sig.get("bracket") or {})
+
+    # 各シグナルの内容をINFOに
+    for _sig in signals:
+        entry = (_sig.get("entry") or {})
+        br = (_sig.get("bracket") or {})
         logger.info(
             "signal: {} {} {} @ {} | qty={} | TP={} SL={}",
-            sig.get("date", ""), sig.get("setup", ""), sig.get("symbol", ""),
+            _sig.get("date",""), _sig.get("setup",""), _sig.get("symbol",""),
             entry.get("price") or entry.get("limit") or entry.get("stop") or "",
-            sig.get("qty", ""), br.get("takeProfitPrice", ""), br.get("stopLossPrice", "")
+            _sig.get("qty",""), br.get("takeProfitPrice",""), br.get("stopLossPrice",""),
         )
 
     logger.info("run_signals: {} file(s) written (logfile={})", len(paths), logfile)
     return 0
+
 
 
 

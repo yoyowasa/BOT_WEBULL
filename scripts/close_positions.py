@@ -6,6 +6,8 @@
 from __future__ import annotations
 from pathlib import Path                  # フォルダ作成・移動のために使う
 from datetime import datetime, time       # ET時刻の現在時刻・比較に使う
+import os  # 何をする行？：環境変数 FORCE_CLOSE を読むため（“時間無視の強制クローズ”に使う）
+
 from loguru import logger                 # 共通ログ（data/logs/bot.log に集約）
 
 from rh_pdc_daytrade.utils.envutil import load_dotenv_if_exists  # 何をする関数？：.envを先に読む  :contentReference[oaicite:3]{index=3}
@@ -85,11 +87,14 @@ def main() -> int:
     cfg = load_config()
     now_et = datetime.now(get_et_tz())
 
-    if not _is_force_close_time(now_et, cfg):
+    # 何をする行？：環境変数 FORCE_CLOSE=1 のときは“時刻判定を無視”して今すぐクローズを実行する
+    _force = (os.getenv("FORCE_CLOSE", "").strip() in ("1", "true", "TRUE", "on", "ON"))
+    if (not _force) and (not _is_force_close_time(now_et, cfg)):
         logger.info("close_positions: 時刻前のため何もしません（現在ET: {} / 既定: {}）",
                     now_et.strftime("%H:%M:%S"),
                     (cfg.get("orders") or {}).get("force_close_by", "15:55:00"))
         return 0
+
 
     base, sent, cancelled = _dirs()
     files = _today_files(sent)

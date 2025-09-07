@@ -1,0 +1,11 @@
+date,entry_time_et,symbol,setup,entry_type,entry_price,qty,tp_price,sl_price,notes,exit_time_et,exit_price,R,slippage_pct,spread_pct
+20250902,12:02:46,AAPL,A,limit,191.97,1,195.0,189.0,manual test,,,,,
+20250902,23:35:18,AAPL,B,limit,191.97,10,201.57,187.17,B: AVWAP(9:30) pullback bounce (first hit in window),,,,,
+20250903,09:55:19,AAPL,B,limit,191.97,10,201.57,187.17,B: AVWAP(9:30) pullback bounce (first hit in window),,,,,
+20250904,10:34:41,AAPL,B,limit,191.97,10,201.57,187.17,B: AVWAP(9:30) pullback bounce (first hit in window),,,,,
+20250904,12:41:00,TSLA,B,limit,1.23,1,1.3,1.1,cancel-hook test,,,,,
+20250904,12:51:11,TSLA,B,limit,1.23,1,1.3,1.1,cancel-hook test (extreme price),,,,,
+20250904,13:29:53,TSLA,B,limit,1.23,1,1.3,1.1,cancel-hook final test (extreme price),,,,,
+20250907,17:12:27,NVDA,A,stop_limit,169.01,11,177.46,164.78,A: ORB breakout + VWAP above (first hit in window),,,,,
+20250907,17:12:27,TSLA,A,stop_limit,354.77,5,372.51,345.9,A: ORB breakout + VWAP above (first hit in window),,,,,
+20250907,17:12:27,AAPL,A,stop_limit,241.79,8,253.88,235.75,A: ORB breakout + VWAP above (first hit in window),,,,,

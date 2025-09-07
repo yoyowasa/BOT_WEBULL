@@ -9,7 +9,6 @@ from __future__ import annotations
 from pathlib import Path                  # 出力フォルダの作成とパス操作に使う
 from datetime import datetime             # 生成時刻（ET）を記録するために使う
 import os                                 # POLYGON_API_KEY の有無を確認するために使う
-import orjson                             # 高速にJSONを書き出すために使う
 from loguru import logger                 # ログ出力（共通ルールに従う）
 import pandas as pd  # スコア計算の中間表（DataFrame）を扱うために使う
 from rh_pdc_daytrade.utils.envutil import load_dotenv_if_exists   # .envの自動読込（先頭で呼ぶ）  :contentReference[oaicite:5]{index=5}
@@ -24,6 +23,27 @@ from rh_pdc_daytrade.screening.eod_screen import (
 )
 from rh_pdc_daytrade.utils.io import write_parquet, write_csv  # 何をする関数？：EOD特徴量のParquet/CSV保存用（標準の保存口）。  :contentReference[oaicite:2]{index=2}
 from rh_pdc_daytrade.utils.timeutil import get_et_tz               # ET時刻の安定取得（tzdataフォールバック）  :contentReference[oaicite:8]{index=8}
+
+# 役割: JSONをUTF-8で安全に書き出す（UnicodeEncodeError対策／インデント付き）
+def _write_json_utf8(path, obj):
+    """
+    JSONを必ずUTF-8のバイナリで保存します。
+    - 文字列PathでもPathオブジェクトでも使えます
+    - 親フォルダが無い場合は作成します
+    - orjsonで高速&安全に整形（インデント）して保存します
+    """
+# Path はモジュール先頭で import 済み（関数内での再importは行わない方針）
+
+    import orjson              # この関数でしか使わないので関数内に限定
+
+    p = Path(path)  # ここでPath化することで、文字列/Pathのどちらでも受け取れるようにする
+    p.parent.mkdir(parents=True, exist_ok=True)  # 親フォルダを必ず用意する
+    # orjson.dumpsはUTF-8のbytesを返すので、そのままwrite_bytesに渡すと文字化けや改行混在の影響を受けない
+    data_bytes = orjson.dumps(obj, option=orjson.OPT_INDENT_2 | orjson.OPT_SERIALIZE_NUMPY)  # 役割: まずメモリ上でUTF-8のJSONバイト列を作る
+    tmp = p.with_suffix(p.suffix + ".tmp")  # 役割: 一時ファイル（同一フォルダ）を作る → 同一フォルダなら置換はほぼアトミック
+    tmp.write_bytes(data_bytes)  # 役割: 一時ファイルに全量を書き終えてから…
+    os.replace(tmp, p)  # 役割: 本番ファイルへ“置換”（失敗時は旧ファイルが残るので壊れたJSONを防げる）
+  # 役割: NumPy型も安全に直列化
 
 def write_watchlists_stub(symbols: list[str], out_dir: Path) -> tuple[Path, Path]:
     """
@@ -41,8 +61,9 @@ def write_watchlists_stub(symbols: list[str], out_dir: Path) -> tuple[Path, Path
     }
     a_path = out_dir / "watchlist_A.json"
     b_path = out_dir / "watchlist_B.json"
-    a_path.write_bytes(orjson.dumps(payload, option=orjson.OPT_INDENT_2))
-    b_path.write_bytes(orjson.dumps(payload, option=orjson.OPT_INDENT_2))
+    _write_json_utf8(a_path, payload)  # 役割: A用ウォッチリストをUTF-8安全に保存（整形付き）
+    _write_json_utf8(b_path, payload)  # 役割: B用ウォッチリストをUTF-8安全に保存（整形付き）
+
     return a_path, b_path
 
 def write_watchlists_ranked(topA, topB, out_dir: Path) -> tuple[Path, Path]:
@@ -89,8 +110,8 @@ def write_watchlists_ranked(topA, topB, out_dir: Path) -> tuple[Path, Path]:
 
     a_path = out_dir / "watchlist_A.json"
     b_path = out_dir / "watchlist_B.json"
-    a_path.write_bytes(orjson.dumps(payloadA, option=orjson.OPT_INDENT_2))
-    b_path.write_bytes(orjson.dumps(payloadB, option=orjson.OPT_INDENT_2))
+    _write_json_utf8(a_path, payloadA)  # 役割: A（順位付き）をUTF-8安全に保存（整形付き）
+    _write_json_utf8(b_path, payloadB)  # 役割: B（順位付き）をUTF-8安全に保存（整形付き）
     return a_path, b_path
 
 
@@ -157,15 +178,18 @@ def main() -> int:
     # 2) 設定と銘柄グループの取得（まずは quick_test を使って動作確認）  :contentReference[oaicite:11]{index=11}
     cfg = load_config()
     symbols_file = cfg["data"]["symbols_file"]
-    group = "quick_test"
+    group = os.getenv("WATCHLIST_GROUP") or cfg.get("eod", {}).get("symbols_group") or "quick_test"  # 役割: グループを env/config/既定の順で解決
     syms = load_symbols(group, symbols_file)
+    top_n = int((os.getenv("WATCHLIST_TOP_N") or cfg.get("eod", {}).get("watchlist_top_n") or 20))  # 役割: 上位件数を env/config で上書きし、無ければ20
     if not syms:
         logger.warning("symbols group '{}' is empty in {}", group, symbols_file)
         syms = ["AAPL", "TSLA", "AMD", "NVDA"]
 
     # 3) Polygonキーの有無で分岐（未設定でも“警告＋最小出力で継続”する方針）  :contentReference[oaicite:12]{index=12}
     polygon_key = os.getenv("POLYGON_API_KEY", "").strip()
-    out_dir = Path("data") / "eod"
+    out_dir = Path(os.getenv("EOD_DIR") or cfg.get("data", {}).get("eod_dir") or "data/eod")  # 役割: 出力先を env/config/既定 の順で解決
+    logger.info("eod config: group={} | symbols_file={} | out_dir={} | top_n={}", group, symbols_file, out_dir, top_n)  # 役割: 起動時に解決された設定の要点を1行で可視化
+
     if not polygon_key:
         logger.warning("POLYGON_API_KEY is empty. Using stub EOD dataset to produce ranked watchlists.")
         # 1) 雛形データを作成（キー無しでも“基本8割”のロジックを試せる）  :contentReference[oaicite:11]{index=11}
@@ -174,12 +198,12 @@ def main() -> int:
         df = apply_hard_filters(df, cfg)
         df = compute_scores_basic(df, cfg)
         p_parq, p_csv = save_eod_features(df, out_dir)  # 何をする関数？：EOD特徴量のスナップショットを保存。
-        logger.info("eod snapshot saved: {} , {}", p_parq, p_csv)
+        logger.info("eod snapshot saved (stub dataset): {} , {}", p_parq, p_csv)  # 役割: EOD保存のログにデータソース(stub)を明示
 
-        topA, topB = rank_watchlists(df, top_n=20)
+        topA, topB = rank_watchlists(df, top_n=top_n)  # 役割: 固定20をやめ、設定可能な件数でランキング
         # 3) 順位付きウォッチリストを書き出し（Runbook準拠の場所へ）  :contentReference[oaicite:13]{index=13}
         a, b = write_watchlists_ranked(topA, topB, out_dir)
-        logger.info("ranked watchlists written (stub dataset): {} , {}", a, b)
+        logger.info("ranked watchlists written (stub dataset): {} , {} | group={} | top_n={} | A={} B={}", a, b, group, top_n, len(topA), len(topB))  # 役割: watchlist出力の内訳を明示（設定と件数を一目で把握）
         return 0
 
 
@@ -212,11 +236,11 @@ def main() -> int:
     df = apply_hard_filters(df, cfg)                 # 何をする関数？：価格/出来高/ATR%/トレンド/フロートで合否を付ける
     df = compute_scores_basic(df, cfg)               # 何をする関数？：“基本8割”の線形和で A/B スコアを出す
     p_parq, p_csv = save_eod_features(df, out_dir)  # 何をする関数？：EOD特徴量のスナップショットを保存。
-    logger.info("eod snapshot saved: {} , {}", p_parq, p_csv)
+    logger.info("eod snapshot saved ({} dataset): {} , {}", source_label, p_parq, p_csv)  # 役割: EOD保存のログに最終データソース(polygon/stub)を明示
 
-    topA, topB = rank_watchlists(df, top_n=20)       # 何をする関数？：A/B の上位N銘柄を選ぶ
+    topA, topB = rank_watchlists(df, top_n=top_n)  # 役割: 固定20をやめ、設定可能な件数でランキング    # 何をする関数？：A/B の上位N銘柄を選ぶ
     a, b = write_watchlists_ranked(topA, topB, out_dir)  # 何をする関数？：Runbook準拠のA/B watchlistを書き出す
-    logger.info("ranked watchlists written ({} dataset): {} , {}", source_label, a, b)  # 何をする行？：実データソース名を正しく出す。
+    logger.info("ranked watchlists written ({} dataset): {} , {} | group={} | top_n={} | A={} B={}", source_label, a, b, group, top_n, len(topA), len(topB))  # 役割: watchlist出力の内訳を明示（設定と件数を一目で把握）
     return 0
 
 

@@ -120,12 +120,22 @@ function Install-All([int]$WsSec) {
   $tCloseLocal   = Convert-ETToLocal $tCloseET
   $tKpiLocal     = Convert-ETToLocal $tKpiET
 
-  New-Job 'WEBULL_Nightly' $tNightlyLocal 'nightly' $WsSec
-  New-Job 'WEBULL_Session' $tSessionLocal 'session' $WsSec
-  New-Job 'WEBULL_Cancel'  $tCancelLocal  'cancel'  $WsSec
-  New-Job 'WEBULL_Close'   $tCloseLocal   'close'   $WsSec
-  New-Job 'WEBULL_KPI'     $tKpiLocal     'kpi'     $WsSec
+  $action_nightly = New-ScheduledTaskAction -Execute "C:\Program Files\PowerShell\7\pwsh.exe" -Argument "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File E:\BOT_WEBULL\run_all.ps1 -Phase nightly" -WorkingDirectory "E:\BOT_WEBULL"  # 役割: Nightlyを共通エントリ経由で起動し、作業フォルダをE:\BOT_WEBULLに固定
 
+  $action_session = New-ScheduledTaskAction -Execute "C:\Program Files\PowerShell\7\pwsh.exe" -Argument "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File E:\BOT_WEBULL\run_all.ps1 -Phase session" -WorkingDirectory "E:\BOT_WEBULL"  # 役割: Sessionを共通エントリ経由で起動し、作業フォルダをE:\BOT_WEBULLに固定
+
+  $action_cancel = New-ScheduledTaskAction -Execute "C:\Program Files\PowerShell\7\pwsh.exe" -Argument "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File E:\BOT_WEBULL\run_all.ps1 -Phase cancel" -WorkingDirectory "E:\BOT_WEBULL"  # 役割: Cancelを共通エントリ経由で起動し、作業フォルダをE:\BOT_WEBULLに固定
+
+  $action_close = New-ScheduledTaskAction -Execute "C:\Program Files\PowerShell\7\pwsh.exe" -Argument "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File E:\BOT_WEBULL\run_all.ps1 -Phase close" -WorkingDirectory "E:\BOT_WEBULL"  # 役割: Closeを共通エントリ経由で起動し、作業フォルダをE:\BOT_WEBULLに固定
+
+  $action_kpi = New-ScheduledTaskAction -Execute "C:\Program Files\PowerShell\7\pwsh.exe" -Argument "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File E:\BOT_WEBULL\run_all.ps1 -Phase kpi" -WorkingDirectory "E:\BOT_WEBULL"  # 役割: KPI集計を共通エントリ経由で起動し、作業フォルダをE:\BOT_WEBULLに固定
+
+  $action_signals = New-ScheduledTaskAction -Execute "C:\Program Files\PowerShell\7\pwsh.exe" -Argument "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File E:\BOT_WEBULL\run_all.ps1 -Phase signals" -WorkingDirectory "E:\BOT_WEBULL"  # 役割: Signalsを共通エントリ経由で起動し、作業フォルダをE:\BOT_WEBULLに固定
+  $action_orders = New-ScheduledTaskAction -Execute "C:\Program Files\PowerShell\7\pwsh.exe" -Argument "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File E:\BOT_WEBULL\run_all.ps1 -Phase orders" -WorkingDirectory "E:\BOT_WEBULL"  # 役割: Ordersを共通エントリ経由で起動し、作業フォルダをE:\BOT_WEBULLに固定
+
+  $action_indicators = New-ScheduledTaskAction -Execute "C:\Program Files\PowerShell\7\pwsh.exe" -Argument "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File E:\BOT_WEBULL\run_all.ps1 -Phase indicators" -WorkingDirectory "E:\BOT_WEBULL"  # 役割: 指標計算を共通エントリ経由で起動し、作業フォルダをE:\BOT_WEBULLに固定
+
+  # 既存タスクを削除してから登録（重
   Write-Host "Installed tasks (local time):"
   Write-Host ("  Nightly  : {0:t}" -f $tNightlyLocal)
   Write-Host ("  Session  : {0:t}" -f $tSessionLocal)

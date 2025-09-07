@@ -1,39 +1,27 @@
-[project]
+[tool.poetry]
 name = "bot-webull"
 version = "0.1.0"
 description = ""
-authors = [
-    {name = "Yoshi",email = "yoshiyoshi@example.com"}
-]
+authors = ["Yoshi <yoshiyoshi@example.com>"]
 readme = "README.md"
-requires-python = ">=3.11"
-dependencies = [
-    "loguru (>=0.7,<0.8)"
-]
+packages = [{ include = "rh_pdc_daytrade", from = "src" }]
 
+[tool.poetry.dependencies]
+python = "^3.11"
+loguru = "^0.7"
+numpy = "^2.3.2"
+pandas = "^2.3.2"
+pyarrow = "^21.0.0"
+orjson = "^3.11.3"
+pyyaml = "^6.0"
+requests = "^2.32"
+tenacity = "^8.3"
+websockets = "^12.0"
+fastparquet = "^2024.5.0"
+click = "^8.1"
+tzdata = "^2024.1"
+python-dotenv = "^1.0.1"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
-
-[tool.poetry]
-# 追加（[tool.poetry] セクション内の name/version/description/readme の並びの直後でOK）
-packages = [{ include = "rh_pdc_daytrade", from = "src" }]  # src配下のパッケージを認識させる設定
-
-
-[tool.poetry.dependencies]
-# 置換（[tool.poetry.dependencies] セクション内の python 行をこれにそろえる）
-python = "^3.11"  # 実行Pythonを3.11系に固定（プロジェクト前提）
-pandas = "^2.2"          # データフレーム処理（約定・バー・KPIの土台）
-numpy = "^1.26"          # 数値計算（指標の高速処理）
-pyyaml = "^6.0"          # YAML設定（configs/*.yaml 読み込み）
-python-dotenv = "^1.0"   # .env 読み込み（APIキー等の環境変数）
-requests = "^2.32"       # REST呼び出し（Polygonなど夜間EOD）
-orjson = "^3.10"         # 高速JSON（ndjsonやログの入出力）
-tenacity = "^8.3"        # リトライ制御（WS/REST再接続に使用）
-loguru = "^0.7"          # ログ（運用ログを見やすく出す）
-websockets = "^12.0"     # WS接続（場中データ受信）※エラー対策資料の推奨版
-pyarrow = "^16.1"        # 列型メモリ形式（1m/5mバー保存の基盤）
-fastparquet = "^2024.5.0"# Parquet保存の実装（高速I/O）
-click = "^8.1"           # CLI化（scripts/*.py の引数処理）
-tzdata = "^2024.1"       # WindowsでのIANAタイムゾーン補完（ET変換の安定化）
