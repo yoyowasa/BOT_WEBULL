@@ -1,0 +1,18 @@
+{
+  "date": "20250909",
+  "symbol": "TSLA",
+  "setup": "A",
+  "entryType": "stop_limit",
+  "qty": 5,
+  "entry": {
+    "stop": 353.71,
+    "limit": 354.77,
+    "price": 354.77
+  },
+  "bracket": {
+    "takeProfitPrice": 372.51,
+    "stopLossPrice": 345.9,
+    "moveToBreakevenOnTP": true
+  },
+  "notes": "A: ORB breakout + VWAP above (first hit in window)"
+}

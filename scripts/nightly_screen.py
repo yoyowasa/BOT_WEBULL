@@ -45,6 +45,24 @@ def _write_json_utf8(path, obj):
     os.replace(tmp, p)  # 役割: 本番ファイルへ“置換”（失敗時は旧ファイルが残るので壊れたJSONを防げる）
   # 役割: NumPy型も安全に直列化
 
+def _load_manual_watchlist(path: str) -> list[str]:
+    # 手動ウォッチリスト（TXT）を読み込み、銘柄コードの配列に整えて返す
+    p = Path(path)
+    syms: list[str] = []
+    for line in p.read_text(encoding="utf-8").splitlines():
+        s = line.strip().upper()
+        if not s or s.startswith("#"):
+            continue
+        syms.append(s)
+    # 重複除去（順序は維持）
+    seen = set()
+    uniq: list[str] = []
+    for s in syms:
+        if s not in seen:
+            uniq.append(s)
+            seen.add(s)
+    return uniq
+
 def write_watchlists_stub(symbols: list[str], out_dir: Path) -> tuple[Path, Path]:
     """
     何をする関数？：
@@ -199,6 +217,33 @@ def main() -> int:
         df = compute_scores_basic(df, cfg)
         p_parq, p_csv = save_eod_features(df, out_dir)  # 何をする関数？：EOD特徴量のスナップショットを保存。
         logger.info("eod snapshot saved (stub dataset): {} , {}", p_parq, p_csv)  # 役割: EOD保存のログにデータソース(stub)を明示
+        manual_file = os.environ.get("WATCHLIST_FILE") or os.environ.get("MANUAL_WATCHLIST")  # 手動リストのパスを環境変数から取得
+        logger.info(f"manual watchlist file (env): {manual_file or '-'}")  # 検知状況をログに明示
+        if manual_file:
+            _mf = Path(manual_file)
+            if _mf.exists():
+                # TXTを読み込み：空行と#コメントを除外、重複も除く
+                syms: list[str] = []
+                for line in _mf.read_text(encoding="utf-8").splitlines():
+                    s = line.strip().upper()
+                    if not s or s.startswith("#"):
+                        continue
+                    if s not in syms:
+                        syms.append(s)
+                # 上位top_nでA/Bを書き出し（必要なら後続でA/B分割ロジックを拡張）
+                a = syms[:top_n]
+                b = syms[:top_n]
+                _write_json_utf8(os.path.join(out_dir, "watchlist_A.json"), a)  # Aを書き出す
+                _write_json_utf8(os.path.join(out_dir, "watchlist_B.json"), b)  # Bを書き出す
+                logger.info(
+                    f"ranked watchlists written (manual override): "
+                    f"{os.path.join(out_dir,'watchlist_A.json')} , {os.path.join(out_dir,'watchlist_B.json')} "
+                    f"| group={group} | top_n={top_n} | A={len(a)} B={len(b)}"
+                )
+                return 0  # 手動優先でここで処理を終える（以降のrank_watchlistsはスキップ）
+            else:
+                logger.warning(f"manual watchlist file not found: {manual_file} (ignored)")  # パス不正時は警告だけ出して通常経路へ
+
 
         topA, topB = rank_watchlists(df, top_n=top_n)  # 役割: 固定20をやめ、設定可能な件数でランキング
         # 3) 順位付きウォッチリストを書き出し（Runbook準拠の場所へ）  :contentReference[oaicite:13]{index=13}

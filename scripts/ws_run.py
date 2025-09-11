@@ -3,6 +3,11 @@
 
 from __future__ import annotations
 from pathlib import Path  # パス操作（watchlistの場所を扱う）
+import json               # サブスクライブ送信用のペイロード生成に使用
+try:
+    import yaml           # symbols.yml からユニバースを読む（無ければ手動/JSONのみで動く）
+except Exception:
+    yaml = None
 import os                 # 環境変数（ALPACA_FEED / WS_RUN_SECONDS）取得
 from loguru import logger # 共通ログ（data/logs/bot.log に集約）  :contentReference[oaicite:4]{index=4}
 
@@ -69,6 +74,31 @@ def _load_session_symbols(cfg: dict) -> list[str]:
     from pathlib import Path            # 関数内だけで使うのでここに書く（ルール準拠）
     import orjson                       # 同上（遅延インポートで起動失敗を防ぐ）
 
+    # 0) 何をするブロック？：
+    #    環境変数 WATCHLIST_FILE / MANUAL_WATCHLIST が指す手動TXTを“最優先”で読む。
+    #    空行・#コメントをスキップし、重複を除いた配列が得られたら即returnする。
+    manual = os.environ.get("WATCHLIST_FILE") or os.environ.get("MANUAL_WATCHLIST")
+    if manual:
+        _mf = Path(manual)
+        if _mf.exists():
+            try:
+                _syms, _seen = [], set()
+                for line in _mf.read_text(encoding="utf-8").splitlines():
+                    s = line.strip().upper()
+                    if not s or s.startswith("#"):
+                        continue
+                    if s not in _seen:
+                        _seen.add(s); _syms.append(s)
+                if _syms:
+                    logger.info("ws_run: using manual watchlist {} ({} symbols)", _mf, len(_syms))
+                    return _syms
+                else:
+                    logger.warning("ws_run: manual watchlist {} has no symbols; fallback", _mf)
+            except Exception as e:
+                logger.warning("ws_run: manual watchlist read failed ({}); fallback", e)
+        else:
+            logger.warning("ws_run: manual watchlist not found: {}", _mf)
+
     # A/Bの余計な空白や小文字を吸収（"A "→"A" など）。  :contentReference[oaicite:3]{index=3}
     setup = str((cfg.get("strategy") or {}).get("active_setup", "A")).strip().upper()
     wl_path = Path("data") / "eod" / f"watchlist_{setup}.json"
@@ -76,8 +106,10 @@ def _load_session_symbols(cfg: dict) -> list[str]:
     # 1) 前夜のwatchlistを読む
     if wl_path.exists():
         try:
-            data = orjson.loads(wl_path.read_bytes())
-            syms = [s for s in data.get("symbols", []) if isinstance(s, str)]
+            data = orjson.loads(wl_path.read_bytes())  # 何をする行？：watchlist JSONを読み込む（配列形式/辞書形式の両方に対応）
+            raw = (data if isinstance(data, list) else (data.get("symbols") or data.get("tickers") or [])) if isinstance(data, (list, dict)) else []  # 何をする行？：配列ならそのまま／辞書なら "symbols"→"tickers" の順で読む
+            syms = [str(s).strip().upper() for s in raw if isinstance(s, str) and str(s).strip()]  # 何をする行？：文字列だけを大文字整形して抽出（空行・無効値は除外）
+
             if syms:
                 logger.info("ws_run: using {} ({} symbols) for setup={}", wl_path, len(syms), setup)
                 return syms
@@ -122,7 +154,8 @@ def main() -> int:
         logger.warning("ws_run: iex feed allows up to 30 symbols; trimming from {} to 30", len(syms))
         syms = syms[:30]
 
-    syms = _pick_symbols(cfg)
+    logger.info("ws_run: using symbols decided by _load_session_symbols ({} symbols)", len(syms))  # 何をする行？：上書きをやめ、直前で決まった購読銘柄の件数だけ通知する
+
     if not syms:
         logger.error("no symbols to subscribe; exiting")
         return 1
