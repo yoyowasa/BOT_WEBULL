@@ -61,7 +61,8 @@ function Assert-RepoReady {
 }
 
 function Register-WebullTask {
-  [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]  # 何をする行？：-WhatIf/-Confirm を有効化し、状態変更を安全にする
+  [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]  # 何をする行？：-WhatIf/-Confirm を有効化し、
+  # 状態変更を安全にする
   param(
     [Parameter(Mandatory)][string]$Name,
     [Parameter(Mandatory)][datetime]$AtLocal,
