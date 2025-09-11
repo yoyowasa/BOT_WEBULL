@@ -61,7 +61,8 @@ function Assert-RepoReady {
 }
 
 function Register-WebullTask {
-  [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]  # 何をする行？：-WhatIf/-Confirm を有効化し、状態変更を安全にする
+  [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]  # 何をする行？：-WhatIf/-Confirm を有効化し、
+  # 状態変更を安全にする
   param(
     [Parameter(Mandatory)][string]$Name,
     [Parameter(Mandatory)][datetime]$AtLocal,
@@ -165,6 +166,7 @@ function Install-All {
 
 function Uninstall-All {
   [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]  # 何をする行？：-WhatIf/-Confirm を有効化（既定は確認なし）
+  param()                                                           # 何をする行？：引数なしでも Advanced Function にする
   <#
     何をする関数なのか？
       - 5つのタスク（Nightly/Session/Cancel/Close/KPI）を**まとめて削除**する。
