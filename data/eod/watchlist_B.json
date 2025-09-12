@@ -1,0 +1,32 @@
+{
+  "generated_at": "2025-09-12T03:48:33.308293-04:00",
+  "symbols": [
+    "AAPL",
+    "TSLA",
+    "AMD",
+    "NVDA"
+  ],
+  "top": [
+    {
+      "symbol": "AAPL",
+      "score_A": 0.8500000000000005,
+      "score_B": 0.8500000000000005
+    },
+    {
+      "symbol": "TSLA",
+      "score_A": 0.8500000000000005,
+      "score_B": 0.8500000000000005
+    },
+    {
+      "symbol": "AMD",
+      "score_A": 0.8500000000000005,
+      "score_B": 0.8500000000000005
+    },
+    {
+      "symbol": "NVDA",
+      "score_A": 0.8500000000000005,
+      "score_B": 0.8500000000000005
+    }
+  ],
+  "notes": "ranked by nightly_screen (list/DataFrame both supported)"
+}

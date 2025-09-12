@@ -250,32 +250,67 @@ def main() -> int:
         df = compute_scores_basic(df, cfg)
         p_parq, p_csv = save_eod_features(df, out_dir)  # 何をする関数？：EOD特徴量のスナップショットを保存。
         logger.info("eod snapshot saved (stub dataset): {} , {}", p_parq, p_csv)  # 役割: EOD保存のログにデータソース(stub)を明示
-        manual_file = os.environ.get("WATCHLIST_FILE") or os.environ.get("MANUAL_WATCHLIST")  # 手動リストのパスを環境変数から取得
-        logger.info(f"manual watchlist file (env): {manual_file or '-'}")  # 検知状況をログに明示
+        manual_file = os.environ.get("WATCHLIST_FILE") or os.environ.get("MANUAL_WATCHLIST")  # 何をする行？：環境変数から手動ウォッチリストのパスを取る
+        logger.info(f"manual watchlist file (env): {manual_file or '-'}")  # 何をする行？：指定の有無をログに表示
         if manual_file:
             _mf = Path(manual_file)
             if _mf.exists():
-                # TXTを読み込み：空行と#コメントを除外、重複も除く
+                # 何をする行？：CSVかTXTかを拡張子で判定
+                is_csv = _mf.suffix.lower() == ".csv"
+
+                # 何をする行？：CSV/TXTからティッカー配列を作る（空行・#コメントは除外、重複を除く）
                 syms: list[str] = []
-                for line in _mf.read_text(encoding="utf-8").splitlines():
-                    s = line.strip().upper()
-                    if not s or s.startswith("#"):
-                        continue
-                    if s not in syms:
-                        syms.append(s)
-                # 上位top_nでA/Bを書き出し（必要なら後続でA/B分割ロジックを拡張）
+                if is_csv:
+                    with open(_mf, "r", encoding="utf-8", newline="") as f:
+                        reader = csv.reader(f)
+                        rows = [row for row in reader if row]
+                    if rows:
+                        header = [c.strip().lower() for c in rows[0]]
+                        has_header = any(h.isalpha() for h in header)
+                        data_rows = rows[1:] if has_header else rows
+                        col_idx = 0
+                        for cand in ("symbol", "ticker"):
+                            if cand in header:
+                                col_idx = header.index(cand); break
+                        seen = set()
+                        for row in data_rows:
+                            if not row:
+                                continue
+                            s = (row[col_idx] if col_idx < len(row) else "").strip()
+                            if not s or s.startswith("#"):
+                                continue
+                            s = s.upper()
+                            if s not in seen:
+                                seen.add(s); syms.append(s)
+                else:
+                    seen = set()
+                    for line in _mf.read_text(encoding="utf-8").splitlines():
+                        s = line.strip().upper()
+                        if not s or s.startswith("#") or s in seen:
+                            continue
+                        seen.add(s); syms.append(s)
+
+                # 何をする行？：上位 top_n をA/Bに反映
                 a = syms[:top_n]
                 b = syms[:top_n]
-                _write_json_utf8(os.path.join(out_dir, "watchlist_A.json"), a)  # Aを書き出す
-                _write_json_utf8(os.path.join(out_dir, "watchlist_B.json"), b)  # Bを書き出す
+
+                # 何をする行？：{"symbols":[...]} 形式でA/Bを書き出す（WS側はこのキーだけ読む）
+                _write_json_utf8(os.path.join(out_dir, "watchlist_A.json"), {"symbols": a})
+                _write_json_utf8(os.path.join(out_dir, "watchlist_B.json"), {"symbols": b})
+
+                # 何をする行？：上書き完了をログし、この先のランキング処理はスキップ
+                src = "csv" if is_csv else "txt"
                 logger.info(
-                    f"ranked watchlists written (manual override): "
+                    f"ranked watchlists written (manual override:{src}): "
                     f"{os.path.join(out_dir,'watchlist_A.json')} , {os.path.join(out_dir,'watchlist_B.json')} "
                     f"| group={group} | top_n={top_n} | A={len(a)} B={len(b)}"
                 )
-                return 0  # 手動優先でここで処理を終える（以降のrank_watchlistsはスキップ）
+                return 0
             else:
-                logger.warning(f"manual watchlist file not found: {manual_file} (ignored)")  # パス不正時は警告だけ出して通常経路へ
+                logger.warning(f"manual watchlist file not found: {manual_file} (ignored)")  # 何をする行？：見つからなければ警告だけ出して通常経路へ
+
+
+
 
 
         topA, topB = rank_watchlists(df, top_n=top_n)  # 役割: 固定20をやめ、設定可能な件数でランキング

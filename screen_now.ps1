@@ -37,7 +37,8 @@ $env:ALLOW_BARS_FALLBACK = if ($NoFallback) { '0' } else { '1' }
 $env:PYTHONPATH = if ($env:PYTHONPATH) { "$root;$env:PYTHONPATH" } else { "$root" }  # 何をする行？：プロジェクト直下（E:\BOT_WEBULL）をPYTHONPATHに追加→rh_pdc_daytrade配下のモジュールを確実にimport可能にする
 $env:STREAM_DIR = 'E:\data\stream'  # 何をする行？：1分バーの保存先をレガシー実績パスに固定し、compute_indicators の探索先と一致させる
 
-$env:WATCHLIST_FILE = 'E:\BOT_WEBULL\configs\manual_watchlist.txt'  # 手動ウォッチリストを最優先で適用（symbols.ymlのquick_testより優先）
+if (-not $env:WATCHLIST_FILE) { $env:WATCHLIST_FILE = 'E:\BOT_WEBULL\configs\manual_watchlist.txt' }  # 何をする行？：外部から WATCHLIST_FILE が来ていればそれを優先し、未指定のときだけ既定TXTを使う
+
 
 # 2) 実行ディレクトリをプロジェクト直下に合わせます（相対パス解決のため）
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path

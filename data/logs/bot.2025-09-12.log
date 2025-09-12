@@ -1,0 +1,36 @@
+2025-09-12 15:06:14 | INFO | nightly_screen: start (logfile=E:\BOT_WEBULL\data\logs\bot.log)
+2025-09-12 15:06:14 | INFO | eod config: group=quick_test | symbols_file=configs/symbols.yml | out_dir=data\eod | top_n=100
+2025-09-12 15:06:19 | ERROR | polygon: failed AAPL (RetryError[<Future at 0x21b1b7b98d0 state=finished raised UnicodeEncodeError>])
+2025-09-12 15:06:24 | ERROR | polygon: failed TSLA (RetryError[<Future at 0x21b1b7badd0 state=finished raised UnicodeEncodeError>])
+2025-09-12 15:06:29 | ERROR | polygon: failed AMD (RetryError[<Future at 0x21b1b7c0a50 state=finished raised UnicodeEncodeError>])
+2025-09-12 15:06:34 | ERROR | polygon: failed NVDA (RetryError[<Future at 0x21b1b7c2890 state=finished raised UnicodeEncodeError>])
+2025-09-12 15:06:34 | WARNING | polygon returned empty dataset; falling back to stub.
+2025-09-12 15:06:34 | INFO | eod snapshot saved (stub dataset): data\eod\eod_features_20250912.parquet , data\eod\eod_features_20250912.csv
+2025-09-12 15:06:34 | INFO | ranked watchlists written (stub dataset): data\eod\watchlist_A.json , data\eod\watchlist_B.json | group=quick_test | top_n=100 | A=4 B=4
+2025-09-12 15:06:36 | INFO | compute_indicators: start (logfile=E:\BOT_WEBULL\data\logs\bot.log)
+2025-09-12 15:06:36 | WARNING | bars ndjson not found: E:\data\stream\bars_20250912.ndjson -> fallback to latest: E:\data\stream\bars_20250909.ndjson
+2025-09-12 15:06:36 | INFO | reading bars ndjson: E:\data\stream\bars_20250909.ndjson
+2025-09-12 15:06:36 | INFO | bars loaded: rows=168 symbols=4
+2025-09-12 15:06:36 | INFO | indicators saved: data\bars\bars_1m_20250909.parquet , data\bars\indicators_20250909.parquet
+2025-09-12 15:06:37 | INFO | override setup: A -> B (ACTIVE_SETUP)
+2025-09-12 15:06:37 | WARNING | inputs not found for today -> fallback to latest: bars_1m_20250909.parquet , indicators_20250909.parquet
+2025-09-12 15:06:37 | INFO | signals inputs loaded: rows=168 symbols=4 (bars='bars_1m_20250909.parquet', ind='indicators_20250909.parquet')
+2025-09-12 15:06:37 | INFO | run_signals: 0 file(s) written (logfile=E:\BOT_WEBULL\data\logs\bot.log)
+2025-09-12 16:39:50 | INFO | nightly_screen: start (logfile=E:\BOT_WEBULL\data\logs\bot.log)
+2025-09-12 16:39:50 | INFO | eod config: group=quick_test | symbols_file=configs/symbols.yml | out_dir=data\eod | top_n=100
+2025-09-12 16:39:55 | ERROR | polygon: failed AAPL (RetryError[<Future at 0x1efeeef8650 state=finished raised UnicodeEncodeError>])
+2025-09-12 16:39:59 | ERROR | polygon: failed TSLA (RetryError[<Future at 0x1efeeefb250 state=finished raised UnicodeEncodeError>])
+2025-09-12 16:40:05 | ERROR | polygon: failed AMD (RetryError[<Future at 0x1efeef05a10 state=finished raised UnicodeEncodeError>])
+2025-09-12 16:40:09 | ERROR | polygon: failed NVDA (RetryError[<Future at 0x1efeeefb1d0 state=finished raised UnicodeEncodeError>])
+2025-09-12 16:40:09 | WARNING | polygon returned empty dataset; falling back to stub.
+2025-09-12 16:40:09 | INFO | eod snapshot saved (stub dataset): data\eod\eod_features_20250912.parquet , data\eod\eod_features_20250912.csv
+2025-09-12 16:40:09 | INFO | ranked watchlists written (stub dataset): data\eod\watchlist_A.json , data\eod\watchlist_B.json | group=quick_test | top_n=100 | A=4 B=4
+2025-09-12 16:48:13 | INFO | nightly_screen: start (logfile=E:\BOT_WEBULL\data\logs\bot.log)
+2025-09-12 16:48:13 | INFO | eod config: group=quick_test | symbols_file=configs/symbols.yml | out_dir=data\eod | top_n=100
+2025-09-12 16:48:18 | ERROR | polygon: failed AAPL (RetryError[<Future at 0x15feb4c9450 state=finished raised UnicodeEncodeError>])
+2025-09-12 16:48:23 | ERROR | polygon: failed TSLA (RetryError[<Future at 0x15feb4cb610 state=finished raised UnicodeEncodeError>])
+2025-09-12 16:48:28 | ERROR | polygon: failed AMD (RetryError[<Future at 0x15feb4cbdd0 state=finished raised UnicodeEncodeError>])
+2025-09-12 16:48:33 | ERROR | polygon: failed NVDA (RetryError[<Future at 0x15feb4cb6d0 state=finished raised UnicodeEncodeError>])
+2025-09-12 16:48:33 | WARNING | polygon returned empty dataset; falling back to stub.
+2025-09-12 16:48:33 | INFO | eod snapshot saved (stub dataset): data\eod\eod_features_20250912.parquet , data\eod\eod_features_20250912.csv
+2025-09-12 16:48:33 | INFO | ranked watchlists written (stub dataset): data\eod\watchlist_A.json , data\eod\watchlist_B.json | group=quick_test | top_n=100 | A=4 B=4
