@@ -9,6 +9,8 @@ from __future__ import annotations
 from pathlib import Path                  # 出力フォルダの作成とパス操作に使う
 from datetime import datetime             # 生成時刻（ET）を記録するために使う
 import os                                 # POLYGON_API_KEY の有無を確認するために使う
+import csv  # 何をする行？：CSVウォッチリストを読み込むために使用
+
 from loguru import logger                 # ログ出力（共通ルールに従う）
 import pandas as pd  # スコア計算の中間表（DataFrame）を扱うために使う
 from rh_pdc_daytrade.utils.envutil import load_dotenv_if_exists   # .envの自動読込（先頭で呼ぶ）  :contentReference[oaicite:5]{index=5}
@@ -44,6 +46,37 @@ def _write_json_utf8(path, obj):
     tmp.write_bytes(data_bytes)  # 役割: 一時ファイルに全量を書き終えてから…
     os.replace(tmp, p)  # 役割: 本番ファイルへ“置換”（失敗時は旧ファイルが残るので壊れたJSONを防げる）
   # 役割: NumPy型も安全に直列化
+
+def _load_symbols_from_csv(path: str) -> list[str]:
+    # 何をする関数か：CSVからティッカー列を抽出する（'symbol' or 'ticker' 列、見つからなければ先頭列）
+    syms: list[str] = []
+    with open(path, "r", encoding="utf-8", newline="") as f:
+        reader = csv.reader(f)
+        rows = [row for row in reader if row]
+    if not rows:
+        return []
+    header = [c.strip().lower() for c in rows[0]]
+    # ヘッダが文字列で構成されていれば1行目をヘッダとみなし、それ以外は全行データとみなす
+    data_rows = rows[1:] if any(h.isalpha() for h in header) else rows
+    # 列位置を決定（'symbol' / 'ticker' 優先、無ければ先頭列）
+    col_idx = 0
+    for cand in ("symbol", "ticker"):
+        if cand in header:
+            col_idx = header.index(cand)
+            break
+    # 行ごとに抽出して整形
+    seen = set()
+    for row in data_rows:
+        if not row:
+            continue
+        s = (row[col_idx] if col_idx < len(row) else "").strip()
+        if not s or s.startswith("#"):
+            continue
+        s = s.upper()
+        if s not in seen:
+            seen.add(s)
+            syms.append(s)
+    return syms
 
 def _load_manual_watchlist(path: str) -> list[str]:
     # 手動ウォッチリスト（TXT）を読み込み、銘柄コードの配列に整えて返す

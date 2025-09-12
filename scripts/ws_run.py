@@ -10,10 +10,12 @@ except Exception:
     yaml = None
 import os                 # 環境変数（ALPACA_FEED / WS_RUN_SECONDS）取得
 from loguru import logger # 共通ログ（data/logs/bot.log に集約）  :contentReference[oaicite:4]{index=4}
+from threading import Thread  # 何をする行？：WSを別スレッドで実行し、規定秒でメインを必ず返すために使用
 
 from rh_pdc_daytrade.utils.envutil import load_dotenv_if_exists   # .env 自動読込（最初に呼ぶ）  :contentReference[oaicite:5]{index=5}
 from rh_pdc_daytrade.utils.logutil import configure_logging        # ログ初期化（冪等）  :contentReference[oaicite:6]{index=6}
 from rh_pdc_daytrade.utils.configutil import load_config, load_symbols  # 設定/銘柄の共通ローダ  :contentReference[oaicite:7]{index=7}
+from threading import Thread  # 何をする行？：WSを別スレッドで実行し、規定秒でメインを確実に返すために使用
 
 def _watchlist_path(setup: str) -> Path:
     """
@@ -163,12 +165,10 @@ def main() -> int:
     feed = os.getenv("ALPACA_FEED", "iex")  # 何をする行？：使用するリアルタイムfeed（既定はiex）を決定
 
     # 何をする行？：WSの実行秒数を確定（env優先／未指定→90秒／75秒未満→90秒に底上げ）
-    _env = os.getenv("WS_RUN_SECONDS", "").strip()
-    run_seconds = int(_env) if _env.isdigit() else (run_seconds or 0)
-    if run_seconds <= 0:
-        run_seconds = 90
-    if run_seconds < 90:                      # 何をする行？：短すぎる指定はバー不足を招くため下限を90秒にする
-        run_seconds = 90
+    _env = os.getenv("WS_RUN_SECONDS", "").strip()  # 何をする行？：環境変数から実行秒数を読む（空なら後段でデフォルト化）
+    run_seconds = int(_env) if _env.isdigit() else 0  # 何をする行？：未定義を避けて確実に初期化（0ならデフォルト適用）
+    if run_seconds < 90: run_seconds = 90  # 何をする行？：短すぎるとバー不足なので下限を90秒に固定
+
     stream_dir = os.environ.get("STREAM_DIR") or os.path.join("data", "stream")  # 何をする行？：barsの保存先を環境変数で一元化（未設定はリポ内 data/stream）
     os.makedirs(stream_dir, exist_ok=True)                                        # 何をする行？：保存ディレクトリを必ず用意（無ければ作成）
     os.environ["STREAM_DIR"] = os.path.abspath(stream_dir)                         # 何をする行？：下位モジュール（WS/ロック/保存）にも同じ場所を伝える
@@ -186,10 +186,23 @@ def main() -> int:
     from rh_pdc_daytrade.providers.alpaca_iex_ws import connect_and_stream  # 何をする行？：STREAM_DIR設定後にimportして、単一実行ロックと保存先を同じ環境変数で解決させる
 
     logger.info("ws_run start: feed={} symbols={} run_seconds={} (logfile={})", feed, syms, run_seconds, logfile)  # 何をする行？：確定した秒数を開始ログに出す
+    def _runner():  # 何をする関数？：WS接続ループの起動ラッパー（STREAM_DIR設定後にimportさせる）
+        from rh_pdc_daytrade.providers.alpaca_iex_ws import connect_and_stream  # 何をする行？：環境が整った後に限定してimport
+        connect_and_stream(syms, feed=feed, run_seconds=run_seconds)  # 何をする行？：WS本体を起動
 
-    res = connect_and_stream(syms, feed=feed, run_seconds=run_seconds)
-    logger.info(f"ws cancelled after {run_seconds} seconds")
-    return res
+    t = Thread(target=_runner, daemon=True)  # 何をする行？：WSをデーモンスレッドで実行
+    t.start(); t.join(run_seconds)           # 何をする行？：規定秒だけ待機してメイン処理を確実に返す
+    logger.info("ws watchdog: timeout reached ({}s); returning to caller", run_seconds)  # 何をする行？：タイムアウト到達を記録
+    return 0  # 何をする行？：この時点でmainを終了し、次工程（指標→シグナル）へ必ず進ませる
+
+    def _runner():  # 何をする関数？：WS本体（connect_and_stream）を別スレッドで実行する
+        connect_and_stream(syms, feed=feed, run_seconds=run_seconds)
+
+    t = Thread(target=_runner, daemon=True)  # 何をする行？：規定秒で必ず制御を返すためのウォッチドッグ
+    t.start(); t.join(run_seconds)           # 何をする行？：run_seconds 経過まで待機し、超えたらメインを返す
+    logger.info("ws watchdog: timeout reached ({}s); returning to caller", run_seconds)  # 何をする行？：タイムアウト到達を記録
+    return 0  # 何をする行？：ここでmainを終了し、次工程（compute_indicators→run_signals）へ必ず進ませる
+
 
 
 

@@ -34,6 +34,8 @@ $env:ACTIVE_SETUP        = $Setup
 $env:WATCHLIST_TOP_N     = $TopN.ToString()
 $env:WATCHLIST_GROUP     = $Group
 $env:ALLOW_BARS_FALLBACK = if ($NoFallback) { '0' } else { '1' }
+$env:PYTHONPATH = if ($env:PYTHONPATH) { "$root;$env:PYTHONPATH" } else { "$root" }  # 何をする行？：プロジェクト直下（E:\BOT_WEBULL）をPYTHONPATHに追加→rh_pdc_daytrade配下のモジュールを確実にimport可能にする
+$env:STREAM_DIR = 'E:\data\stream'  # 何をする行？：1分バーの保存先をレガシー実績パスに固定し、compute_indicators の探索先と一致させる
 
 $env:WATCHLIST_FILE = 'E:\BOT_WEBULL\configs\manual_watchlist.txt'  # 手動ウォッチリストを最優先で適用（symbols.ymlのquick_testより優先）
 
@@ -42,6 +44,14 @@ $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $root
 
 Write-Host "screen_now: start | setup=$($env:ACTIVE_SETUP) group=$($env:WATCHLIST_GROUP) top_n=$($env:WATCHLIST_TOP_N) fallback=$($env:ALLOW_BARS_FALLBACK)"
+
+# 何をするブロック？：主要依存の存在チェック→足りなければ poetry install で自己回復（pandas/orjson/pyarrow/numpy）
+poetry run python -c "import pandas,orjson,pyarrow,numpy" 2>$null
+if ($LASTEXITCODE -ne 0) {
+  Write-Host "screen_now: missing deps -> running 'poetry install' ..."
+  poetry install --no-interaction
+  if ($LASTEXITCODE -ne 0) { Write-Error "poetry install failed"; exit 1 }
+}
 
 # 3) Nightly（ウォッチリストの準備：Polygon失敗ならstubへ自動フォールバック）
 poetry run python scripts/nightly_screen.py
@@ -65,7 +75,7 @@ if ($Symbols -and $Symbols.Trim().Length -gt 0) {
   Write-Host ("screen_now: watchlist_A/B.json overridden from -Symbols (" + $syms.Count + " symbols)")
   if ($CollectBars) {
     # 何をする行？：古いロックが残っているとWS接続をスキップするため、先に削除して確実に接続させる
-    $lock = 'E:\data\stream\.alpaca_ws.lock'
+    $lock = (Join-Path $env:STREAM_DIR '.alpaca_ws.lock')  # 何をする行？：固定した保存先と同じ場所のロックを確実に削除する
     if (Test-Path $lock) { Remove-Item $lock -Force -ErrorAction SilentlyContinue }
 
     # 何をする行？：WSの実行秒数とFEEDを設定（既定iex／30銘柄上限）

@@ -198,4 +198,3 @@ switch ($Action) {
   'list'      { Get-WebullTasks; break }
   default     { throw "Unknown -Action: $Action" }
 }
-
