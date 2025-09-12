@@ -241,82 +241,43 @@ def main() -> int:
     out_dir = Path(os.getenv("EOD_DIR") or cfg.get("data", {}).get("eod_dir") or "data/eod")  # 役割: 出力先を env/config/既定 の順で解決
     logger.info("eod config: group={} | symbols_file={} | out_dir={} | top_n={}", group, symbols_file, out_dir, top_n)  # 役割: 起動時に解決された設定の要点を1行で可視化
 
-    if not polygon_key:
-        logger.warning("POLYGON_API_KEY is empty. Using stub EOD dataset to produce ranked watchlists.")
-        # 1) 雛形データを作成（キー無しでも“基本8割”のロジックを試せる）  :contentReference[oaicite:11]{index=11}
-        df = build_df_stub(syms)
-        # 2) ハードフィルタ → スコア → A/B上位抽出（eod_screen.py を利用）  :contentReference[oaicite:12]{index=12}
-        df = apply_hard_filters(df, cfg)
-        df = compute_scores_basic(df, cfg)
-        p_parq, p_csv = save_eod_features(df, out_dir)  # 何をする関数？：EOD特徴量のスナップショットを保存。
-        logger.info("eod snapshot saved (stub dataset): {} , {}", p_parq, p_csv)  # 役割: EOD保存のログにデータソース(stub)を明示
-        manual_file = os.environ.get("WATCHLIST_FILE") or os.environ.get("MANUAL_WATCHLIST")  # 何をする行？：環境変数から手動ウォッチリストのパスを取る
-        logger.info(f"manual watchlist file (env): {manual_file or '-'}")  # 何をする行？：指定の有無をログに表示
-        if manual_file:
-            _mf = Path(manual_file)
-            if _mf.exists():
-                # 何をする行？：CSVかTXTかを拡張子で判定
-                is_csv = _mf.suffix.lower() == ".csv"
-
-                # 何をする行？：CSV/TXTからティッカー配列を作る（空行・#コメントは除外、重複を除く）
-                syms: list[str] = []
-                if is_csv:
-                    with open(_mf, "r", encoding="utf-8", newline="") as f:
-                        reader = csv.reader(f)
-                        rows = [row for row in reader if row]
-                    if rows:
-                        header = [c.strip().lower() for c in rows[0]]
-                        has_header = any(h.isalpha() for h in header)
-                        data_rows = rows[1:] if has_header else rows
-                        col_idx = 0
-                        for cand in ("symbol", "ticker"):
-                            if cand in header:
-                                col_idx = header.index(cand); break
-                        seen = set()
-                        for row in data_rows:
-                            if not row:
-                                continue
-                            s = (row[col_idx] if col_idx < len(row) else "").strip()
-                            if not s or s.startswith("#"):
-                                continue
-                            s = s.upper()
-                            if s not in seen:
-                                seen.add(s); syms.append(s)
-                else:
-                    seen = set()
-                    for line in _mf.read_text(encoding="utf-8").splitlines():
-                        s = line.strip().upper()
-                        if not s or s.startswith("#") or s in seen:
-                            continue
-                        seen.add(s); syms.append(s)
-
-                # 何をする行？：上位 top_n をA/Bに反映
+    manual_file = os.environ.get("WATCHLIST_FILE") or os.environ.get("MANUAL_WATCHLIST")
+    logger.info(f"manual watchlist file (env): {manual_file or '-'}")
+    if manual_file:
+        _mf = Path(manual_file)
+        if _mf.exists():
+            is_csv = _mf.suffix.lower() == ".csv"
+            syms = _load_symbols_from_csv(_mf) if is_csv else _load_manual_watchlist(_mf)
+            if syms:
                 a = syms[:top_n]
                 b = syms[:top_n]
-
-                # 何をする行？：{"symbols":[...]} 形式でA/Bを書き出す（WS側はこのキーだけ読む）
-                _write_json_utf8(os.path.join(out_dir, "watchlist_A.json"), {"symbols": a})
-                _write_json_utf8(os.path.join(out_dir, "watchlist_B.json"), {"symbols": b})
-
-                # 何をする行？：上書き完了をログし、この先のランキング処理はスキップ
+                _write_json_utf8(out_dir / "watchlist_A.json", {"symbols": a})
+                _write_json_utf8(out_dir / "watchlist_B.json", {"symbols": b})
                 src = "csv" if is_csv else "txt"
                 logger.info(
                     f"ranked watchlists written (manual override:{src}): "
-                    f"{os.path.join(out_dir,'watchlist_A.json')} , {os.path.join(out_dir,'watchlist_B.json')} "
+                    f"{out_dir / 'watchlist_A.json'} , {out_dir / 'watchlist_B.json'} "
                     f"| group={group} | top_n={top_n} | A={len(a)} B={len(b)}"
                 )
                 return 0
             else:
-                logger.warning(f"manual watchlist file not found: {manual_file} (ignored)")  # 何をする行？：見つからなければ警告だけ出して通常経路へ
+                logger.warning(f"manual watchlist {manual_file} has no symbols; continuing")
+        else:
+            logger.warning(f"manual watchlist file not found: {manual_file} (ignored)")
 
-
-
-
-
-        topA, topB = rank_watchlists(df, top_n=top_n)  # 役割: 固定20をやめ、設定可能な件数でランキング
-        # 3) 順位付きウォッチリストを書き出し（Runbook準拠の場所へ）  :contentReference[oaicite:13]{index=13}
+    if not polygon_key:
+        logger.warning("POLYGON_API_KEY is empty. Using stub EOD dataset to produce ranked watchlists.")
+        df = build_df_stub(syms)
+        df = apply_hard_filters(df, cfg)
+        df = compute_scores_basic(df, cfg)
+        p_parq, p_csv = save_eod_features(df, out_dir)
+        logger.info("eod snapshot saved (stub dataset): {} , {}", p_parq, p_csv)
+        topA, topB = rank_watchlists(df, top_n=top_n)
         a, b = write_watchlists_ranked(topA, topB, out_dir)
-        logger.info("ranked watchlists written (stub dataset): {} , {} | group={} | top_n={} | A={} B={}", a, b, group, top_n, len(topA), len(topB))  # 役割: watchlist出力の内訳を明示（設定と件数を一目で把握）
+        logger.info(
+            "ranked watchlists written (stub dataset): {} , {} | group={} | top_n={} | A={} B={}",
+            a, b, group, top_n, len(topA), len(topB),
+        )
         return 0
 
 
