@@ -58,10 +58,12 @@ def _read_bars_ndjson(p: Path, symbols: list[str]) -> pd.DataFrame:
             return pd.DataFrame(columns=["symbol", "et", "o", "h", "l", "c", "v"])  # 何をする行？：空DFで正常終了（後段はスキップ）
 
         # 何をする行？：今日のbarsが無いとき、候補ディレクトリから“最新bars”を探して p を差し替える
-        search_dirs = [Path("data") / "stream"]  # 何をする行？：通常の保存先
-        ext_dir = os.environ.get("STREAM_DIR", r"E:\data\stream")  # 何をする行？：外部保存先（環境変数優先、無ければE:\data\stream）
+        search_dirs = []
+        ext_dir = os.environ.get("STREAM_DIR")
         if ext_dir:
             search_dirs.append(Path(ext_dir))
+        search_dirs.append(Path("data") / "stream")  # 何をする行？：通常の保存先
+
 
         candidates = []
         for root in search_dirs:
@@ -238,6 +240,11 @@ def main() -> int:
     logfile = configure_logging()
     cfg = load_config()
     logger.info("compute_indicators: start (logfile={})", logfile)
+
+    stream_dir = os.environ.get("STREAM_DIR") or os.path.join("data", "stream")
+    os.makedirs(stream_dir, exist_ok=True)
+    os.environ["STREAM_DIR"] = os.path.abspath(stream_dir)
+    logger.info("STREAM_DIR={}", os.environ["STREAM_DIR"])
 
     def _norm_ns(x):
         # 何をする関数？：'t' が数値/文字列どちらでも、UTCの“nsエポック整数”に正規化する。

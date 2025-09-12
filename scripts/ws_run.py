@@ -15,7 +15,6 @@ from threading import Thread  # 何をする行？：WSを別スレッドで実�
 from rh_pdc_daytrade.utils.envutil import load_dotenv_if_exists   # .env 自動読込（最初に呼ぶ）  :contentReference[oaicite:5]{index=5}
 from rh_pdc_daytrade.utils.logutil import configure_logging        # ログ初期化（冪等）  :contentReference[oaicite:6]{index=6}
 from rh_pdc_daytrade.utils.configutil import load_config, load_symbols  # 設定/銘柄の共通ローダ  :contentReference[oaicite:7]{index=7}
-from threading import Thread  # 何をする行？：WSを別スレッドで実行し、規定秒でメインを確実に返すために使用
 
 def _watchlist_path(setup: str) -> Path:
     """
@@ -48,23 +47,6 @@ def _read_watchlist_symbols(p: Path) -> list[str]:
             seen.add(sym)
             result.append(sym)
     return result
-
-def _pick_symbols(cfg: dict) -> list[str]:
-    """
-    何をする関数？：
-      - 優先：data/eod/watchlist_{A|B}.json（config.strategy.active_setupに従う）。  :contentReference[oaicite:11]{index=11}
-      - 次点：configs/symbols.yml の quick_test グループ。
-      - 最後：["AAPL","TSLA","AMD","NVDA"]（最小の動作確認用）。  :contentReference[oaicite:12]{index=12}
-    """
-    setup = (cfg.get("strategy", {}) or {}).get("active_setup", "A")
-    wl = _watchlist_path(setup)
-    syms = _read_watchlist_symbols(wl)
-    if not syms:
-        syms = load_symbols("quick_test", cfg["data"]["symbols_file"])
-    if not syms:
-        logger.warning("fallback to default quick list (AAPL,TSLA,AMD,NVDA)")
-        syms = ["AAPL", "TSLA", "AMD", "NVDA"]
-    return syms
 
 def _load_session_symbols(cfg: dict) -> list[str]:
     """
@@ -108,17 +90,16 @@ def _load_session_symbols(cfg: dict) -> list[str]:
     # 1) 前夜のwatchlistを読む
     if wl_path.exists():
         try:
-            data = orjson.loads(wl_path.read_bytes())  # 何をする行？：watchlist JSONを読み込む（配列形式/辞書形式の両方に対応）
-            raw = (data if isinstance(data, list) else (data.get("symbols") or data.get("tickers") or [])) if isinstance(data, (list, dict)) else []  # 何をする行？：配列ならそのまま／辞書なら "symbols"→"tickers" の順で読む
-            syms = [str(s).strip().upper() for s in raw if isinstance(s, str) and str(s).strip()]  # 何をする行？：文字列だけを大文字整形して抽出（空行・無効値は除外）
-
+            data = orjson.loads(wl_path.read_bytes())
+            raw = data.get('symbols') if isinstance(data, dict) else []
+            syms = [str(s).strip().upper() for s in raw if isinstance(s, str) and str(s).strip()]
             if syms:
-                logger.info("ws_run: using {} ({} symbols) for setup={}", wl_path, len(syms), setup)
+                logger.info('ws_run: using {} ({} symbols) for setup={}', wl_path, len(syms), setup)
                 return syms
             else:
-                logger.warning("ws_run: {} has no 'symbols' or empty; fallback to symbols.yml", wl_path)
+                logger.warning('ws_run: {} has no 'symbols' or empty; fallback to symbols.yml', wl_path)
         except Exception as e:
-            logger.warning("ws_run: failed to parse {} ({}); fallback to symbols.yml", wl_path, e)
+            logger.warning('ws_run: failed to parse {} ({}) ; fallback to symbols.yml', wl_path, e)
 
     # 2) symbols.yml の quick_test へフォールバック（運用手順の既定）。  :contentReference[oaicite:4]{index=4}
     try:
@@ -194,19 +175,6 @@ def main() -> int:
     t.start(); t.join(run_seconds)           # 何をする行？：規定秒だけ待機してメイン処理を確実に返す
     logger.info("ws watchdog: timeout reached ({}s); returning to caller", run_seconds)  # 何をする行？：タイムアウト到達を記録
     return 0  # 何をする行？：この時点でmainを終了し、次工程（指標→シグナル）へ必ず進ませる
-
-    def _runner():  # 何をする関数？：WS本体（connect_and_stream）を別スレッドで実行する
-        connect_and_stream(syms, feed=feed, run_seconds=run_seconds)
-
-    t = Thread(target=_runner, daemon=True)  # 何をする行？：規定秒で必ず制御を返すためのウォッチドッグ
-    t.start(); t.join(run_seconds)           # 何をする行？：run_seconds 経過まで待機し、超えたらメインを返す
-    logger.info("ws watchdog: timeout reached ({}s); returning to caller", run_seconds)  # 何をする行？：タイムアウト到達を記録
-    return 0  # 何をする行？：ここでmainを終了し、次工程（compute_indicators→run_signals）へ必ず進ませる
-
-
-
-
-
 
 if __name__ == "__main__":
     raise SystemExit(main())
